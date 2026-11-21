@@ -1061,7 +1061,7 @@ const WELLS=[[-38.4,18.6],[-51.6,31.5],[11.6,20.2],[34.6,26],[-7.2,-33.6],[53.6,
 const PROP_RECTS=[[-43.2,1.5,-34.8,3.1],[-50,1.5,-43.2,4.4],[-34.8,1.5,-31.2,4.4],...WELLS.map(([x,z])=>[x-.9,z-.9,x+.9,z+.9])];
 /* 小巷：街区内部开巷连接街道（图中未画，按华北县城常制示意）；不临街的人家门开在巷两侧 */
 {
-  const LW=1.0, base=ST.slice(), ZE=HZ-1.4, XE=HX-1.4;
+  const LW=.6, base=ST.slice(), ZE=HZ-1.4, XE=HX-1.4;
   const OBS=[...LM.filter(l=>l.type&&!['gate','arch','sub'].includes(l.type)).map(l=>[l.x-l.w/2-.4,l.z-l.d/2-.4,l.x+l.w/2+.4,l.z+l.d/2+.4]),...PROP_RECTS];
   const onSt=(x,z)=>base.some(s=>{ const dx=s.b[0]-s.a[0],dz=s.b[1]-s.a[1],t=Math.max(0,Math.min(1,((x-s.a[0])*dx+(z-s.a[1])*dz)/(dx*dx+dz*dz)));
     return Math.hypot(x-s.a[0]-t*dx,z-s.a[1]-t*dz)<s.w/2+.05; });
@@ -1097,7 +1097,7 @@ const streetGroup=new THREE.Group(); world.add(streetGroup);
 for(const s of ST){
   const [ax,az]=s.a,[bx,bz]=s.b, horiz=Math.abs(az-bz)<.01;
   const len=Math.hypot(bx-ax,bz-az)+s.w;
-  const m=box(streetGroup,horiz?len:s.w,.04,horiz?s.w:len,C.street,(ax+bx)/2,.0,(az+bz)/2); m.castShadow=false;
+  const m=box(streetGroup,horiz?len:s.w,.04,horiz?s.w:len,s.lane?0xc6b690:C.street,(ax+bx)/2,s.lane?-.005:0,(az+bz)/2); m.castShadow=false;
 }
 
 /* ============ 城墙、护城河 ============ */

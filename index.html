@@ -2,7 +2,9 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#e9dfc8">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <title>康熙南宫县城</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;900&display=swap" rel="stylesheet">
@@ -17,7 +19,20 @@ html,body{margin:0;height:100%;overflow:hidden;background:#d9ccb0;color:var(--in
 #app{position:fixed;inset:0}
 canvas{display:block}
 #labels{position:fixed;inset:0;pointer-events:none}
-button{font:inherit;color:inherit}
+button{font:inherit;color:inherit;touch-action:manipulation}
+html,body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none}
+#title,#side,#info,#bar,#walkUI,#joy,#mini{-webkit-user-select:none;user-select:none}
+/* 触屏摇杆 */
+#joy{position:fixed;left:calc(18px + env(safe-area-inset-left));bottom:calc(78px + env(safe-area-inset-bottom));width:124px;height:124px;border-radius:50%;
+  background:rgba(244,237,222,.38);border:1.5px solid rgba(255,250,240,.7);box-shadow:0 4px 18px rgba(0,0,0,.18);display:none;touch-action:none;
+  backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+#knob{position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;background:rgba(42,36,32,.72);
+  border:2px solid rgba(255,250,240,.85);pointer-events:none}
+body.touch.walking #joy{display:block}
+body.touch #dpad{display:none!important}
+#toast{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);background:rgba(42,36,32,.82);color:#f4ecdc;padding:10px 16px;border-radius:6px;
+  font-size:14px;line-height:1.7;text-align:center;pointer-events:none;opacity:0;transition:opacity .4s;white-space:nowrap}
+#toast.show{opacity:1}
 
 /* title */
 #title{position:fixed;left:16px;top:14px;padding:12px 16px 10px;background:var(--panel);border:1px solid var(--line);
@@ -130,9 +145,22 @@ body.walking canvas{cursor:grab}
   #bar button{padding:7px 9px;font-size:13px}
   #hint{display:none}
   #btnList{display:inline-block!important}
-  #walkUI{left:8px;bottom:62px}
-  #mini canvas{width:180px;height:125px}
-  body.walking #bar{bottom:8px}
+  #walkUI{left:auto;right:calc(8px + env(safe-area-inset-right));bottom:auto;top:calc(70px + env(safe-area-inset-top))}
+  #mini{padding:4px} #mini canvas{width:150px;height:104px} #mini .cap{font-size:11px} #mini .cap span:last-child{display:none}
+  #bar{bottom:calc(8px + env(safe-area-inset-bottom));left:calc(8px + env(safe-area-inset-left));right:calc(8px + env(safe-area-inset-right))}
+  #bar::-webkit-scrollbar{display:none}
+  #title{top:calc(8px + env(safe-area-inset-top))} #compass{top:calc(8px + env(safe-area-inset-top));width:46px;height:46px} #compass svg{width:46px;height:46px}
+  #info{bottom:calc(66px + env(safe-area-inset-bottom));max-height:46%;padding:12px 14px 14px} #info h2{font-size:21px} #info blockquote{font-size:13.5px}
+  body.walking #info{max-height:34%}
+  #side.mob{bottom:calc(66px + env(safe-area-inset-bottom))}
+  .lb{font-size:11px;padding:1px 5px} .lb.big{font-size:12.5px} .st{font-size:10.5px}
+  #modal{padding:8px} #modal .pages{flex-direction:row} 
+}
+@media (max-width:760px) and (orientation:landscape){
+  #info{left:auto;right:8px;width:46%;top:8px;bottom:auto;max-height:calc(100% - 70px)}
+  #joy{bottom:calc(64px + env(safe-area-inset-bottom))}
+  #walkUI{top:8px;right:auto;left:calc(8px + env(safe-area-inset-left))}
+  #title{display:none}
 }
 </style>
 <script type="importmap">
@@ -185,6 +213,8 @@ body.walking canvas{cursor:grab}
 <div id="hint">左键拖动旋转 · 右键平移 · 滚轮缩放 · 点击建筑查看</div>
 <div id="tip"></div>
 <div id="cross"></div>
+<div id="joy"><div id="knob"></div></div>
+<div id="toast"></div>
 <div id="walkUI">
   <div id="mini"><canvas id="miniC" width="480" height="332"></canvas>
     <div class="cap"><span>附近：<b id="near">—</b></span><span>点图可瞬移</span></div></div>
@@ -1339,16 +1369,22 @@ function pick(e){
   return h?h.object.userData.lid:null;
 }
 renderer.domElement.style.touchAction='none';
+const TOUCH=matchMedia('(pointer: coarse)').matches||/[?&]touch/.test(location.search);
+if(TOUCH){ document.body.classList.add('touch'); document.getElementById('hint').textContent='单指旋转 · 双指缩放平移 · 点按建筑查看'; }
+const lastXY=new Map();
 renderer.domElement.addEventListener('pointermove',e=>{
-  if(walking&&down){ look(e.movementX||0,e.movementY||0); }
+  const lp=lastXY.get(e.pointerId);
+  if(walking&&down&&lp){ const k=e.pointerType==='touch'?1.5:1; look((e.clientX-lp[0])*k,(e.clientY-lp[1])*k); }
+  if(lp) lastXY.set(e.pointerId,[e.clientX,e.clientY]);
   if(e.buttons) {tip.style.opacity=0;return;}
   const id=pick(e); setHover(id);
   if(id){ tip.textContent=byId[id].name; tip.style.left=e.clientX+14+'px'; tip.style.top=e.clientY+12+'px'; tip.style.opacity=1; }
   else tip.style.opacity=0;
 });
 let down=null;
-renderer.domElement.addEventListener('pointerdown',e=>{down=[e.clientX,e.clientY]; if(walking) renderer.domElement.setPointerCapture(e.pointerId);});
-renderer.domElement.addEventListener('pointerup',e=>{
+renderer.domElement.addEventListener('pointerdown',e=>{down=[e.clientX,e.clientY]; lastXY.set(e.pointerId,[e.clientX,e.clientY]); if(walking) renderer.domElement.setPointerCapture(e.pointerId);});
+renderer.domElement.addEventListener('pointercancel',e=>{lastXY.delete(e.pointerId);down=null;});
+renderer.domElement.addEventListener('pointerup',e=>{ lastXY.delete(e.pointerId);
   const d0=down; down=null;
   if(!d0||Math.hypot(e.clientX-d0[0],e.clientY-d0[1])>5) return;
   const id=pick(e); if(id) select(id,!walking); else deselect();
@@ -1463,6 +1499,15 @@ document.querySelectorAll('#dpad button').forEach(b=>{
   b.addEventListener('pointerdown',e=>{e.preventDefault();b.setPointerCapture(e.pointerId);keys.add(k);});
   for(const ev of ['pointerup','pointercancel','lostpointercapture']) b.addEventListener(ev,()=>keys.delete(k));
 });
+/* 触屏摇杆 */
+const joy={x:0,y:0,id:null}, joyEl=document.getElementById('joy'), knob=document.getElementById('knob');
+function joySet(e){ const r=joyEl.getBoundingClientRect(), R_=r.width/2, cx=r.left+R_, cy=r.top+R_;
+  let dx=e.clientX-cx, dy=e.clientY-cy; const d=Math.hypot(dx,dy), m=R_-14; if(d>m){dx*=m/d;dy*=m/d;}
+  joy.x=dx/m; joy.y=dy/m; knob.style.transform=`translate(${dx}px,${dy}px)`; }
+joyEl.addEventListener('pointerdown',e=>{ e.preventDefault(); joy.id=e.pointerId; joyEl.setPointerCapture(e.pointerId); joySet(e); });
+joyEl.addEventListener('pointermove',e=>{ if(e.pointerId===joy.id) joySet(e); });
+for(const ev of ['pointerup','pointercancel','lostpointercapture']) joyEl.addEventListener(ev,e=>{ if(e.pointerId!==joy.id) return; joy.id=null; joy.x=joy.y=0; knob.style.transform=''; });
+function toast(t,ms=3200){ const el=document.getElementById('toast'); el.innerHTML=t; el.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove('show'),ms); }
 function updateWalk(dt){
   const run=keys.has('run')?2.6:1, sp=4.2*run*dt;
   if(keys.has('tl')) yaw+=1.7*dt; if(keys.has('tr')) yaw-=1.7*dt;
@@ -1470,8 +1515,10 @@ function updateWalk(dt){
   let mx=0,mz=0;
   if(keys.has('fwd')){mx+=fx;mz+=fz;} if(keys.has('back')){mx-=fx;mz-=fz;}
   if(keys.has('left')){mx+=fz;mz-=fx;} if(keys.has('right')){mx-=fz;mz+=fx;}
-  const l=Math.hypot(mx,mz);
-  if(l>0){ tryMove(mx/l*sp,0); tryMove(0,mz/l*sp); }
+  let l=Math.hypot(mx,mz), amp=1;
+  const jm=Math.hypot(joy.x,joy.y);
+  if(jm>.08){ const f=-joy.y, rr=joy.x; mx=fx*f-fz*rr; mz=fz*f+fx*rr; l=Math.hypot(mx,mz); amp=Math.min(1,jm)*(jm>.92?1.9:1); }
+  if(l>0){ tryMove(mx/l*sp*amp,0); tryMove(0,mz/l*sp*amp); }
   player.x=THREE.MathUtils.clamp(player.x,-230,230); player.z=THREE.MathUtils.clamp(player.z,-230,230);
   const bob=l>0?Math.sin(performance.now()*.012*run)*.012:0;
   camera.position.set(player.x,EYE+bob,player.z);
@@ -1497,6 +1544,7 @@ function enterWalk(){
   document.body.classList.add('walking'); $('btnWalk').classList.add('on');
   hintEl.textContent='W/S 前后 · A/D 平移 · ←/→ 转向 · 拖动环顾 · Shift 疾行 · Esc 退出';
   labelsEl.classList.remove('far');
+  if(TOUCH) toast('左下摇杆：行走（推到底可疾行）<br>屏幕任意处拖动：环顾四周');
 }
 function exitWalk(){
   if(!walking) return; walking=false; keys.clear();

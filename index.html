@@ -719,10 +719,10 @@ const B={
     box(g,4.6,.6,1.8,C.stone,0,0,f-13.2);
     hall(g,{z:f-16,w:6.2,d:3.4,h:1.45,base:.75,dbl:true,rh:2.1,rc:C.glaze,pl:'大成殿'});    // 大成殿
     { const bb=new THREE.Group(); bb.position.y=.6; g.add(bb); burner(bb,0,f-13.2,.75); }
-    hall(g,{z:f-21.8,w:4.8,d:2.4,h:1.05,base:.4,storeys:2,rc:C.glaze,pl:'尊经阁'});          // 尊经阁
+    hall(g,{z:f-21.8,w:4.8,d:2.4,h:1.05,base:.4,storeys:2,rc:C.glaze,pl:'尊经阁'}).userData.sub='zunjingge';          // 尊经阁
     for(const sg of [-1,1]) hall(g,{x:sg*(w/2-1.7),z:f-21.8,w:2,d:1.4,h:.7,base:.1,roof:'gable',wall:C.white}); // 神厨/神库
     for(const sg of [-1,1]) box(g,(w-3)/2-.2,.85,.24,C.red,sg*((w-3)/4+.85),0,f-24.6);
-    hall(g,{z:f-27.5,w:4.2,d:2,h:1,base:.3,roof:'hip',pl:'启圣祠'});                        // 启圣祠
+    hall(g,{z:f-27.5,w:4.2,d:2,h:1,base:.3,roof:'hip',pl:'启圣祠'}).userData.sub='qisheng';                        // 启圣祠
     T(-4.5,f-4,1.1,1);T(4.5,f-4,1.1,1);T(-3.2,f-11,1,1);T(3.2,f-11,1,1);
   },
   /* 儒学：大门—仪门—号舍二十楹—进德/修业二斋—明伦堂—敬一亭—会辅堂—学仓—教谕宅、训导宅 */
@@ -739,9 +739,9 @@ const B={
     hall(g,{z:f-21.4,w:4,d:2,h:1,base:.3,roof:'gable',pl:'会辅堂'});                         // 会辅堂
     hall(g,{x:-3.6,z:f-21.4,w:2.2,d:1.4,h:.8,base:.4,roof:'gable',wall:C.wood});            // 学仓
     for(const sg of [-1,1]) box(g,(w-2.4)/2-.2,.8,.24,0x9c4a3c,sg*((w-2.4)/4+.7),0,f-23.4);
-    hall(g,{x:-2.4,z:f-26.4,w:3.4,d:1.7,h:.85,roof:'gable',wall:C.white});                  // 教谕宅
-    hall(g,{x:2.6,z:f-25.4,w:2.8,d:1.4,h:.8,roof:'gable',wall:C.white});                    // 训导宅
-    hall(g,{x:2.6,z:f-28.4,w:2.8,d:1.4,h:.8,roof:'gable',wall:C.white});
+    hall(g,{x:-2.4,z:f-26.4,w:3.4,d:1.7,h:.85,roof:'gable',wall:C.white}).userData.sub='jiaoyu';   // 教谕宅
+    { const xd=new THREE.Group(); xd.userData.sub='xundao'; g.add(xd);                    // 训导二宅
+      hall(xd,{x:2.6,z:f-25.4,w:2.8,d:1.4,h:.8,roof:'gable',wall:C.white}); hall(xd,{x:2.6,z:f-28.4,w:2.8,d:1.4,h:.8,roof:'gable',wall:C.white}); }
     T(-2.4,f-12,1.2);T(2.4,f-7,.9);T(-1,f-29.6,.9);
   },
   /* 兴福寺：山门—钟鼓楼—天王殿—大雄宝殿（重檐）—配殿—三藏阁（万历间建） */
@@ -900,6 +900,15 @@ const LM=[
   q:'明伦堂三楹，进德斋五楹，修业斋五楹。二斋之南为号舍，凡二十楹。其前为仪门，又前为儒学大门。明伦堂前东为敬一亭，后为会辅堂。由后为教谕宅，其东为训导二宅。',
   n:'县学，与文庙东西并列，形成“左庙右学”的格局。复原了大门、仪门、号舍、进德与修业二斋、明伦堂、敬一亭、会辅堂、学仓、教谕宅和训导宅。',
   pos:'文庙之西，图中“儒学”“训导宅”“教谕宅”。'},
+ // —— 院内单体（原图单独题名；建在文庙、儒学院内）
+ {id:'zunjingge',name:'尊经阁',cat:'edu',type:'sub',parent:'wenmiao',
+  q:'庙后为尊经阁，傍有神厨、神库、宰牲房。嘉靖四年，知县张木建。',n:'收藏儒家经籍的楼阁，在大成殿之后。复原为两层，覆绿琉璃瓦，两侧为神厨、神库。原图题作“尊经阁”。',pos:'文庙院内，大成殿之后。'},
+ {id:'qisheng',name:'启圣祠',cat:'edu',type:'sub',parent:'wenmiao',
+  q:'启圣祠在文庙后，嘉靖十一年，知县种云龙建。万历四年，知县邢侗重修。',n:'祭祀孔子之父叔梁纥（明嘉靖时封“启圣公”）的祠堂，位于文庙中轴线最北端。原图题作“启圣祠”。',pos:'文庙最后一进，尊经阁之北。'},
+ {id:'jiaoyu',name:'教谕宅',cat:'edu',type:'sub',parent:'ruxue',
+  q:'明伦堂前东为敬一亭，后为会辅堂。由后为教谕宅，其东为训导二宅。',n:'县学主官教谕的住宅，在儒学最后一进西侧。原图题作“教谕宅”。',pos:'儒学院内最北，西侧。'},
+ {id:'xundao',name:'训导宅',cat:'edu',type:'sub',parent:'ruxue',
+  q:'由后为教谕宅，其东为训导二宅。',n:'县学副教官训导的住宅。志载“训导二宅”，复原为教谕宅东侧前后两座。原图题作“训导宅”。',pos:'儒学院内最北，教谕宅之东。'},
  // —— 坛庙祠
  {id:'chenghuang',name:'城隍庙',cat:'temple',type:'cityGod',x:-62,z:-16,w:12,d:27,big:1,
   q:'城隍庙在县治西。成化十九年建。大殿三楹，东西廊各五楹，前为戟门，又前为大门。正德十年，知县李需重修。',
@@ -913,7 +922,9 @@ const LM=[
  {id:'wenchangmiao',name:'文昌庙',cat:'temple',type:'shrine',x:8,z:-42.5,w:6,d:6,
   q:'关帝庙在文昌祠南。',n:'图中题作“文昌庙”，志文作“文昌祠”。它位于北街关帝庙以北，与图中的相对位置一致。',pos:'安阜门内东侧。'},
  {id:'guandi',name:'关圣庙',cat:'temple',type:'shrine',x:5.9,z:-26,w:3.6,d:5,
-  q:'关帝庙在北街。',n:'图中题作“关圣庙”。',pos:'北街东侧。'},
+  q:'关帝庙在北街。',n:'图中题作“关圣庙”。城北另有一座关帝庙，在儒学西。',pos:'北街东侧。'},
+ {id:'guandi2',name:'关圣庙（儒学西）',cat:'temple',type:'shrine',x:12.6,z:-22.5,w:4,d:4,
+  q:'关帝庙在文昌祠南。',n:'原图在儒学西墙外、幞头街旁侧刻“关圣庙”三字，首字为门字框。营建志关帝庙有两条：“在北街”与“在文昌祠南”。此庙正在文昌祠（图作文昌庙）之南，与后一条相合，故定为关圣庙。',pos:'儒学西墙外，文昌街东，幞头街北。'},
  {id:'mashen',name:'马神庙',cat:'temple',type:'shrine',x:52,z:-42.5,w:5,d:5,
   q:'马王庙在太仆分司西，屋三楹，有阶有门。',n:'',pos:'北城根东段。'},
  {id:'nangongzi',name:'南宫子祠',cat:'temple',type:'shrine',x:61,z:-17,w:6,d:9,
@@ -1115,7 +1126,7 @@ const crenels=[];
 /* ============ 建造名胜 ============ */
 const pickables=[]; const lmGroups={};
 for(const L of LM){
-  let g;
+  let g; if(L.type==='sub') continue;
   if(L.type===null){ g=wallGroup; }
   else{
     g=new THREE.Group(); g.position.set(L.x,0,L.z); g.rotation.y=L.ry||0; world.add(g);
@@ -1125,6 +1136,16 @@ for(const L of LM){
   }
   g.traverse(o=>{ if(o.isMesh){ o.userData.lid=L.id; pickables.push(o);} });
   lmGroups[L.id]=g; L.group=g;
+}
+/* 院内单体：把对应的殿阁绑定为独立名胜，可单独点选 */
+{
+  const subs=Object.fromEntries(LM.filter(l=>l.type==='sub').map(l=>[l.id,l]));
+  for(const L of LM) if(L.group&&L.type&&L.type!=='sub') { L.group.updateMatrixWorld(true);
+    L.group.traverse(o=>{ const S=subs[o.userData.sub]; if(!S) return;
+      S.group=o; lmGroups[S.id]=o;
+      const b=new THREE.Box3().setFromObject(o), c=b.getCenter(new THREE.Vector3()), sz=b.getSize(new THREE.Vector3());
+      S.x=c.x; S.z=c.z; S.w=sz.x; S.d=sz.z;
+      o.traverse(m=>{ if(m.isMesh) m.userData.lid=S.id; }); }); }
 }
 
 /* ============ 街景：照壁、水井 ============ */

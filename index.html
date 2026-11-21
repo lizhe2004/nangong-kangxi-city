@@ -1165,6 +1165,29 @@ let houseBody=null;
   const segDist=(px,pz,[ax,az],[bx,bz])=>{const dx=bx-ax,dz=bz-az,t=Math.max(0,Math.min(1,((px-ax)*dx+(pz-az)*dz)/(dx*dx+dz*dz)));return Math.hypot(px-ax-t*dx,pz-az-t*dz);};
   let seed=7; const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
   const houses=[];
+  /* 房屋占地（含屋檐、门前幌子/水缸）不得压到街面：沿轮廓取样，返回最大侵入量及所压街道 */
+  const CLR=.12;
+  const intrude=(hs,ret)=>{
+    const c=Math.cos(hs.ry), sn=Math.sin(hs.ry), hx=(hs.w+.3)/2, zb=-(hs.d+.35)/2, zf=hs.d/2+.45;
+    let worst=0, ws=null;
+    const nx=Math.max(2,Math.ceil(hx*2/.35)), nz=Math.max(2,Math.ceil((zf-zb)/.35));
+    for(let i=0;i<=nx;i++) for(let k=0;k<=nz;k++){
+      if(i>0&&i<nx&&k>0&&k<nz) continue;
+      const lx=-hx+2*hx*i/nx, lz=zb+(zf-zb)*k/nz;
+      const px=hs.x+lx*c+lz*sn, pz=hs.z-lx*sn+lz*c;
+      for(const s of ST){ const v=s.w/2+CLR-segDist(px,pz,s.a,s.b); if(v>worst){worst=v;ws=s;} }
+    }
+    if(ret) ret.s=ws; return worst;
+  };
+  const fitHouse=hs=>{
+    for(let it=0;it<4;it++){
+      const r={}, v=intrude(hs,r); if(v<=0) return !rects.some(([a,b,c,d])=>hs.x>a&&hs.x<c&&hs.z>b&&hs.z<d);
+      const s=r.s, dx=s.b[0]-s.a[0], dz=s.b[1]-s.a[1], L=Math.hypot(dx,dz);
+      let nx=-dz/L, nz=dx/L; if((hs.x-s.a[0])*nx+(hs.z-s.a[1])*nz<0){nx=-nx;nz=-nz;}
+      hs.x+=nx*(v+.04); hs.z+=nz*(v+.04);
+    }
+    return false;
+  };
   const STEP=2.75;
   for(let x=-HX+2.6;x<HX-2;x+=STEP) for(let z=-HZ+2.6;z<HZ-2;z+=STEP){
     const jx=x+(rnd()-.5)*.35, jz=z+(rnd()-.5)*.35;
@@ -1179,10 +1202,13 @@ let houseBody=null;
     let ry=0;
     if(mainSt){ ry=horizSt?(jz>ns.a[1]?Math.PI:0):(jx>ns.a[0]?-Math.PI/2:Math.PI/2); }
     const w=mainSt?2.3+rnd()*.3:1.9+rnd()*.5, d=mainSt?1.5:1.1+rnd()*.35, h=mainSt?1.25+rnd()*.35:.72+rnd()*.2;
-    houses.push({x:jx,z:jz,w,d,h,ry,shop:mainSt});
+    const hs={x:jx,z:jz,w,d,h,ry,shop:mainSt};
+    if(!fitHouse(hs)) continue;
+    houses.push(hs);
     if(!mainSt&&rnd()<.55){ // 厢房
       const sg=rnd()<.5?-1:1;
-      houses.push({x:jx+sg*(w/2-.4),z:jz+d/2+.55,w:1.1,d:.8,h:.62,ry:Math.PI/2,wing:1});
+      const wg={x:hs.x+sg*(w/2-.4),z:hs.z+d/2+.55,w:1.1,d:.8,h:.62,ry:Math.PI/2,wing:1};
+      if(intrude(wg)<=0) houses.push(wg);
     }
   }
   const N=houses.length;

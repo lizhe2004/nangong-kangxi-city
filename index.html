@@ -33,6 +33,15 @@ body.touch #dpad{display:none!important}
 #toast{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);background:rgba(42,36,32,.82);color:#f4ecdc;padding:10px 16px;border-radius:6px;
   font-size:14px;line-height:1.7;text-align:center;pointer-events:none;opacity:0;transition:opacity .4s;white-space:nowrap}
 #toast.show{opacity:1}
+/* 漫步：当前街名路牌 + 街边名牌 */
+#streetSign{position:fixed;left:50%;top:calc(16px + env(safe-area-inset-top));transform:translateX(-50%) translateY(-8px);display:none;opacity:0;
+  transition:opacity .35s,transform .35s;pointer-events:none;background:#1c2e48;color:#e3bf66;border:3px solid #b8913f;outline:1px solid #1c2e48;
+  padding:5px 18px 6px;font-size:20px;font-weight:900;letter-spacing:.32em;text-indent:.32em;border-radius:2px;box-shadow:0 4px 14px rgba(0,0,0,.3);white-space:nowrap}
+#streetSign small{display:block;font-size:11px;letter-spacing:.2em;color:#c9b48a;font-weight:600;text-align:center;margin-top:1px}
+body.walking #streetSign{display:block}
+#streetSign.show{opacity:1;transform:translateX(-50%)}
+body.walking .st{writing-mode:horizontal-tb!important;font-size:13px;letter-spacing:.18em;color:#f1e3c2;background:rgba(42,36,32,.72);
+  padding:2px 8px;border-radius:2px;border:1px solid rgba(227,191,102,.6);text-shadow:none}
 
 /* title */
 #title{position:fixed;left:16px;top:14px;padding:12px 16px 10px;background:var(--panel);border:1px solid var(--line);
@@ -156,6 +165,7 @@ body.walking canvas{cursor:grab}
   .lb{font-size:11px;padding:1px 5px} .lb.big{font-size:12.5px} .st{font-size:10.5px}
   #modal{padding:8px} #modal .pages{flex-direction:row} 
 }
+@media (max-width:760px){ #streetSign{top:calc(62px + env(safe-area-inset-top));font-size:16px;padding:4px 12px 5px} }
 @media (max-width:760px) and (orientation:landscape){
   #info{left:auto;right:8px;width:46%;top:8px;bottom:auto;max-height:calc(100% - 70px)}
   #joy{bottom:calc(64px + env(safe-area-inset-bottom))}
@@ -215,6 +225,7 @@ body.walking canvas{cursor:grab}
 <div id="cross"></div>
 <div id="joy"><div id="knob"></div></div>
 <div id="toast"></div>
+<div id="streetSign"></div>
 <div id="walkUI">
   <div id="mini"><canvas id="miniC" width="480" height="332"></canvas>
     <div class="cap"><span>附近：<b id="near">—</b></span><span>点图可瞬移</span></div></div>
@@ -1341,7 +1352,7 @@ for(const s of ST){ if(!s.n) continue;
   const horiz=Math.abs(s.a[1]-s.b[1])<.01;
   const x=s.lx??(s.a[0]+s.b[0])/2, z=s.lz??(s.a[1]+s.b[1])/2;
   if(!horiz) el.style.writingMode='vertical-rl';
-  const o=new CSS2DObject(el); o.position.set(x,.3,z); scene.add(o); streetObjs.push(o);
+  const o=new CSS2DObject(el); o.position.set(x,.3,z); o.userData.seg=s; o.userData.home=o.position.clone(); scene.add(o); streetObjs.push(o);
 }
 
 /* ============ 交互 ============ */
@@ -1508,6 +1519,23 @@ joyEl.addEventListener('pointerdown',e=>{ e.preventDefault(); joy.id=e.pointerId
 joyEl.addEventListener('pointermove',e=>{ if(e.pointerId===joy.id) joySet(e); });
 for(const ev of ['pointerup','pointercancel','lostpointercapture']) joyEl.addEventListener(ev,e=>{ if(e.pointerId!==joy.id) return; joy.id=null; joy.x=joy.y=0; knob.style.transform=''; });
 function toast(t,ms=3200){ const el=document.getElementById('toast'); el.innerHTML=t; el.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove('show'),ms); }
+/* 街名：当前所在街道（屏幕路牌）+ 附近街道前方路段浮出名牌 */
+const signEl=document.getElementById('streetSign'); let curStreet;
+const MARKET={'东大街':'东街集 · 月之二日','西大街':'西街集 · 月之九日','南街':'南街集 · 月之七日','北街':'北街集 · 月之四日'};
+function closestOnSeg(s,px,pz){ const ax=s.a[0],az=s.a[1],dx=s.b[0]-ax,dz=s.b[1]-az,L2=dx*dx+dz*dz;
+  const t=Math.max(0,Math.min(1,((px-ax)*dx+(pz-az)*dz)/L2)); return {t,x:ax+dx*t,z:az+dz*t,d:Math.hypot(px-ax-dx*t,pz-az-dz*t),L:Math.sqrt(L2),dx,dz}; }
+function updateStreetNames(){
+  let best=null,bd=1e9;
+  for(const s of ST){ const c=closestOnSeg(s,player.x,player.z), lim=s.w/2+.7; if(c.d<lim&&c.d-lim<bd){ bd=c.d-lim; best=s; } }
+  const name=best?(best.n||'小巷'):null;
+  if(name!==curStreet){ curStreet=name;
+    if(name){ signEl.innerHTML=name+(MARKET[name]?`<small>${MARKET[name]}</small>`:''); signEl.classList.add('show'); } else signEl.classList.remove('show'); }
+  const fx=-Math.sin(yaw), fz=-Math.cos(yaw);
+  for(const o of streetObjs){ const s=o.userData.seg, c=closestOnSeg(s,player.x,player.z);
+    if(c.d>24||s===best){ o.visible=false; continue; }
+    const dir=Math.sign(c.dx*fx+c.dz*fz)||1, t=Math.max(0,Math.min(1,c.t+dir*6/c.L));
+    o.position.set(s.a[0]+c.dx*t,1.05,s.a[1]+c.dz*t); o.visible=true; }
+}
 function updateWalk(dt){
   const run=keys.has('run')?2.6:1, sp=4.2*run*dt;
   if(keys.has('tl')) yaw+=1.7*dt; if(keys.has('tr')) yaw-=1.7*dt;
@@ -1525,7 +1553,7 @@ function updateWalk(dt){
   camera.rotation.set(pitch,yaw,0,'YXZ');
   // 只显示近处标注
   for(const o of labelObjs) o.visible=o.position.distanceTo(player)<38;
-  for(const o of streetObjs) o.visible=o.position.distanceTo(player)<26;
+  updateStreetNames();
 }
 function walkTo(L){
   let x=L.x, z=L.z, y=0;
@@ -1549,6 +1577,8 @@ function enterWalk(){
 function exitWalk(){
   if(!walking) return; walking=false; keys.clear();
   for(const o of [...labelObjs,...streetObjs]) o.visible=true;
+  for(const o of streetObjs) o.position.copy(o.userData.home);
+  signEl.classList.remove('show'); curStreet=undefined;
   camera.near=1; camera.fov=38; camera.updateProjectionMatrix();
   scene.fog.near=260; scene.fog.far=640;
   const fwd=new THREE.Vector3(-Math.sin(yaw),0,-Math.cos(yaw));

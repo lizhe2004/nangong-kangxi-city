@@ -1434,25 +1434,39 @@ function updatePeople(dt){
     // 前方是否有人挡路
     let blk=null, bAh=9;
     near(cx,cz,w.sedan?2:1,o=>{ if(skip(o)) return; const rx=o.x-cx, rz=o.z-cz, ah=rx*fdx+rz*fdz, la=rx*nx+rz*nz, rr=myR+o.r+.05;
-      if(ah>0&&ah<rr+.7&&Math.abs(la)<rr&&ah<bAh){ bAh=ah; blk={la,rr}; } });
+      if(ah>0&&ah<rr+.7&&Math.abs(la)<rr&&ah<bAh){ bAh=ah; blk={la,rr,who:o.who}; } });
+    const now=performance.now()/1000;
     let go=1;
     if(blk){
       const lim=w.sedan?0:latLim(sg), oOff=w.off+blk.la;
-      // 优先靠右让行（双方各自靠右即可错身）
-      const c=[oOff+w.dir*blk.rr*1.08, oOff-w.dir*blk.rr*1.08].filter(v=>Math.abs(v)<=lim);
-      w.tOff=c.length?c[0]:w.off;
-      if(!c.length||Math.abs(w.tOff-w.off)>.02) go=THREE.MathUtils.clamp((bAh-blk.rr)/.45,0,1);
+      // 往远离对方的一侧让（双方判断天然相反，不会让到同一边）；正对时各自靠右。选定后保持，防止左右摇摆
+      if(!w.av||w.av.who!==blk.who) w.av={who:blk.who, side: Math.abs(blk.la)>.02?-Math.sign(blk.la):w.dir};
+      w.av.t=now;
+      w.tOff=lim>0?THREE.MathUtils.clamp(oOff+w.av.side*blk.rr*1.1,-lim,lim):w.off;
+      if(Math.abs(w.tOff-w.off)>.02||lim===0) go=THREE.MathUtils.clamp((bAh-blk.rr)/.45,0,1);
+    } else if(w.av&&now-w.av.t>1.2) w.av=null;
+    const t0=w.t, dO=w.tOff-w.off, st=.8*dt;
+    const overlaps=(px,pz)=>{ let ov=false; near(px,pz,w.sedan?2:1,o=>{ if(ov||skip(o)) return; const d=Math.hypot(o.x-px,o.z-pz);
+      if(d<myR+o.r-.005&&d<Math.hypot(o.x-cx,o.z-cz)-.001) ov=true; }); return ov; };
+    // 先横移
+    if(Math.abs(dO)>1e-4){ const nOff=w.off+(Math.abs(dO)<st?dO:Math.sign(dO)*st); segPt(sg,w.t,nOff,_pt); if(!overlaps(_pt.x,_pt.y)) w.off=nOff; }
+    const dir0=w.dir, off1=w.off;
+    // 再前进（起步、停步平滑过渡）
+    w.goS=THREE.MathUtils.lerp(w.goS??1,go,Math.min(1,dt*(go<w.goS?12:5))); if(go===0&&w.goS<.05) w.goS=0;
+    w.t+=w.dir*w.speed*w.goS*dt/L;
+    if(w.t>1||w.t<0){ w.t=THREE.MathUtils.clamp(w.t,0,1); const end=w.t>=1?w.seg.b:w.seg.a; nextSeg(w,end.clone()); w.av=null;
+      const ns=w.seg;
+      if(ns!==sg){ // 换街：位置保持连续，再缓步移到新的行走位置
+        const abx=ns.b.x-ns.a.x, abz=ns.b.y-ns.a.y, Ls=Math.hypot(abx,abz), rx=cx-ns.a.x, rz=cz-ns.a.y, lim=latLim(ns);
+        w.tOff=w.off; w.t=THREE.MathUtils.clamp((rx*abx+rz*abz)/(Ls*Ls),0,1);
+        w.off=THREE.MathUtils.clamp((-rx*abz+rz*abx)/Ls,-lim-.3,lim+.3);
+      } else w.tOff=w.off;
     }
-    const t0=w.t, off0=w.off, dO=w.tOff-w.off, st=.8*dt;
-    w.off+=Math.abs(dO)<st?dO:Math.sign(dO)*st;
-    w.t+=w.dir*w.speed*go*dt/L;
-    if(w.t>1||w.t<0){ w.t=THREE.MathUtils.clamp(w.t,0,1); const end=w.t>=1?w.seg.b:w.seg.a; nextSeg(w,end.clone()); w.tOff=w.off; }
     segPt(w.seg,w.t,w.off,_pt);
-    // 硬约束：不与任何人重叠
-    let ov=false; near(_pt.x,_pt.y,w.sedan?2:1,o=>{ if(ov||skip(o)) return; const d=Math.hypot(o.x-_pt.x,o.z-_pt.y);
-      if(d<myR+o.r&&d<Math.hypot(o.x-cx,o.z-cz)) ov=true; });
-    if(ov&&w.seg===sg){ w.t=t0; w.off=off0; w.tOff=off0; go=0; segPt(sg,w.t,w.off,_pt); }
-    if(go<.05){ w.wait=(w.wait||0)+dt; if(w.wait>3+Math.random()*2){ w.dir*=-1; w.wait=0; } } else w.wait=0;
+    if(overlaps(_pt.x,_pt.y)){ if(w.seg!==sg){ w.seg=sg; w.dir=dir0; w.off=off1; w.tOff=off1; } w.t=t0; w.goS=0; segPt(sg,w.t,w.off,_pt); }
+    const moving=w.goS>.05;
+    if(!moving){ w.wait=(w.wait||0)+dt; if(w.wait>3+Math.random()*2){ w.dir*=-1; w.wait=0; w.av=null; w.tOff=w.off; } } else w.wait=0;
+    go=w.goS;
     const dx=(w.seg.b.x-w.seg.a.x)*w.dir, dz=(w.seg.b.y-w.seg.a.y)*w.dir, yaw=Math.atan2(dx,dz);
     if(w.sedan){
       w.sedan.position.set(_pt.x,0,_pt.y); w.sedan.rotation.y=yaw; w.ph=(w.ph||0)+dt*w.speed*11*go;

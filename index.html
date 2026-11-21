@@ -2060,6 +2060,7 @@ applySky('day');
 const needle=document.getElementById('needle');
 const ease=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
 function loop(now){
+  if(window.__FILM) return;   // 拍摄模式由外部脚本逐帧驱动
   const dt=Math.min(.05,(now-lastT)/1000); lastT=now;
   updatePeople(dt); updateSmoke(now);
   if(walking){ updateWalk(dt); drawMini(); needle.setAttribute('transform',`rotate(${THREE.MathUtils.radToDeg(yaw)} 27 27)`);
@@ -2074,6 +2075,8 @@ function loop(now){
   sky.position.copy(camera.position); composer.render(); lblR.render(scene,camera);
   requestAnimationFrame(loop);
 }
+/* 拍摄模式（?film）：把内部对象交给本地的视频渲染脚本 */
+if(/[?&]film\b/.test(location.search)) window.__NG={THREE,scene,camera,renderer,composer,gtao,sky,skyU,updateEnv,SKY,sun,hemi,lanternMat,updatePeople,updateSmoke,byId,LM,ST,HX,HZ};
 requestAnimationFrame(loop);
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
   renderer.setSize(innerWidth,innerHeight); composer.setSize(innerWidth,innerHeight); lblR.setSize(innerWidth,innerHeight);});

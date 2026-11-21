@@ -173,6 +173,21 @@ body.walking canvas{cursor:grab}
   #modal .cap{font-size:12px;padding:8px 12px calc(8px + env(safe-area-inset-bottom))}
 }
 @media (max-width:760px){ #streetSign{top:calc(62px + env(safe-area-inset-top));font-size:16px;padding:4px 12px 5px} }
+/* 横屏手机（宽度可能超过 760）：小地图移到左上，摇杆留在左下，说明面板在右侧 */
+@media (orientation:landscape) and (max-height:500px){
+  #title,#hint{display:none}
+  #walkUI{top:calc(8px + env(safe-area-inset-top));bottom:auto;right:auto;left:calc(8px + env(safe-area-inset-left))}
+  #mini{padding:4px} #mini canvas{width:150px;height:104px} #mini .cap{font-size:11px} #mini .cap span:last-child{display:none}
+  #joy{bottom:calc(58px + env(safe-area-inset-bottom));width:110px;height:110px}
+  #info{left:auto;right:calc(8px + env(safe-area-inset-right));width:min(46%,420px);top:8px;bottom:auto;max-height:calc(100% - 66px);padding:12px 14px 14px}
+  #info h2{font-size:21px}
+  #bar{bottom:calc(6px + env(safe-area-inset-bottom))} #bar button{padding:6px 9px;font-size:13px}
+  #streetSign{top:8px;left:calc(176px + env(safe-area-inset-left));transform:none!important;font-size:16px;padding:4px 12px 5px}
+}
+/* 竖屏漫步：说明面板移到顶部，让出左下角摇杆 */
+@media (max-width:760px) and (orientation:portrait){
+  body.walking #info{top:calc(8px + env(safe-area-inset-top));bottom:auto;max-height:40%;z-index:20}
+}
 @media (max-width:760px) and (orientation:landscape){
   #info{left:auto;right:8px;width:46%;top:8px;bottom:auto;max-height:calc(100% - 70px)}
   #joy{bottom:calc(64px + env(safe-area-inset-bottom))}

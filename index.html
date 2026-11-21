@@ -116,13 +116,18 @@ body.walking .st{writing-mode:horizontal-tb!important;font-size:13px;letter-spac
   opacity:0;transition:opacity .12s}
 
 /* original map modal */
-#modal{position:fixed;inset:0;background:rgba(30,22,14,.72);display:none;align-items:center;justify-content:center;padding:24px}
+#modal{position:fixed;inset:0;background:#1c1610;display:none;flex-direction:column;z-index:50}
 #modal.show{display:flex}
-#modal .box{background:var(--paper);border-radius:4px;padding:14px;max-width:1100px;width:100%;max-height:100%;overflow:auto;position:relative}
-#modal .pages{display:flex;gap:0;justify-content:center}
-#modal img{width:50%;max-width:520px;height:auto;display:block}
-#modal p{font-size:13px;color:var(--ink2);margin:10px 4px 0;line-height:1.7}
-#modal .x{position:absolute;right:8px;top:4px;border:0;background:none;font-size:24px;cursor:pointer}
+#modal .stage{flex:1;position:relative;overflow:hidden;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
+#modal .stage.drag{cursor:grabbing}
+#modal .pages{position:absolute;left:0;top:0;display:flex;transform-origin:0 0;will-change:transform}
+#modal .pages img{width:1200px;height:2033px;display:block;pointer-events:none;-webkit-user-drag:none}
+#modal .tools{position:absolute;right:calc(12px + env(safe-area-inset-right));top:calc(12px + env(safe-area-inset-top));display:flex;gap:6px;z-index:2}
+#modal .tools button{width:40px;height:40px;border:1px solid rgba(239,230,210,.35);border-radius:4px;background:rgba(28,22,16,.78);color:#efe6d2;font-size:20px;line-height:1;cursor:pointer;font-family:inherit}
+#modal .tools button:hover{background:rgba(70,55,40,.9)}
+#modal .zl{position:absolute;left:50%;transform:translateX(-50%);bottom:12px;white-space:nowrap;color:#efe6d2;font-size:13px;background:rgba(28,22,16,.7);padding:5px 10px;border-radius:4px;z-index:2;pointer-events:none}
+#modal .cap{background:var(--paper);color:var(--ink2);font-size:13px;line-height:1.7;margin:0;padding:10px 16px calc(10px + env(safe-area-inset-bottom));max-height:30vh;overflow:auto}
+#modal .cap.hide{display:none}
 
 /* walk mode */
 #walkUI{position:fixed;left:16px;bottom:16px;display:none;flex-direction:column;gap:8px;align-items:flex-start}
@@ -163,7 +168,7 @@ body.walking canvas{cursor:grab}
   body.walking #info{max-height:34%}
   #side.mob{bottom:calc(66px + env(safe-area-inset-bottom))}
   .lb{font-size:11px;padding:1px 5px} .lb.big{font-size:12.5px} .st{font-size:10.5px}
-  #modal{padding:8px} #modal .pages{flex-direction:row} 
+  #modal .cap{font-size:12px;padding:8px 12px calc(8px + env(safe-area-inset-bottom))}
 }
 @media (max-width:760px){ #streetSign{top:calc(62px + env(safe-area-inset-top));font-size:16px;padding:4px 12px 5px} }
 @media (max-width:760px) and (orientation:landscape){
@@ -235,14 +240,19 @@ body.walking canvas{cursor:grab}
   </div>
 </div>
 
-<div id="modal"><div class="box">
-  <button class="x" aria-label="关闭">×</button>
-  <div class="pages">
-    <img src="assets/xianchengtu-west.webp" alt="县城图·西半（左页）">
-    <img src="assets/xianchengtu-east.webp" alt="县城图·东半（右页）">
+<div id="modal" role="dialog" aria-label="县城图原图">
+  <div class="stage">
+    <div class="pages">
+      <img src="assets/xianchengtu-west.webp" alt="县城图·西半（左页）" draggable="false">
+      <img src="assets/xianchengtu-east.webp" alt="县城图·东半（右页）" draggable="false">
+    </div>
+    <div class="zl">滚轮或双指缩放 · 拖动平移 · 双击放大</div>
+    <div class="tools">
+      <button data-z="in" aria-label="放大">＋</button><button data-z="out" aria-label="缩小">－</button><button data-z="fit" aria-label="适合窗口">⤢</button><button data-z="cap" aria-label="显示或隐藏说明">注</button><button class="x" aria-label="关闭">×</button>
+    </div>
   </div>
-  <p>康熙《南宫县志》〈县城图〉原为跨页：左页为城西半（宣化门、县治、城隍庙、兴福寺），右页为城东半（儒学、文庙、育英门、文昌阁、魁星楼），北门安阜门、南门来远门正在两页接缝处。原图上北下南、左西右东，为不按比例的示意图，3D 复原沿用其相对位置。</p>
-</div></div>
+  <p class="cap">康熙《南宫县志》〈县城图〉原为跨页：左页为城西半（宣化门、县治、城隍庙、兴福寺），右页为城东半（儒学、文庙、育英门、文昌阁、魁星楼），北门安阜门、南门来远门正在两页接缝处。原图上北下南、左西右东，为不按比例的示意图，3D 复原沿用其相对位置。</p>
+</div>
 
 <div id="loading">筑城中…</div>
 
@@ -1465,9 +1475,42 @@ $('btnReset').onclick=()=>{ if(walking) exitWalk(); deselect();flyTo(HOME.pos.cl
 $('btnTop').onclick=()=>{ if(walking) exitWalk(); }; $('btnTop').addEventListener('click',()=>flyTo(new THREE.Vector3(0,205,26),new THREE.Vector3(0,0,0)));
 $('btnList').onclick=()=>side.classList.toggle('mob');
 const modal=$('modal');
-$('btnMap').onclick=()=>modal.classList.add('show');
+/* 原图查看器：缩放、平移 */
+const MV=(()=>{
+  const stage=modal.querySelector('.stage'), pg=modal.querySelector('.pages'), hint=modal.querySelector('.zl');
+  const IW=2400, IH=2033, MAXS=4; let s=1,tx=0,ty=0,minS=.1, hintT;
+  const apply=()=>{ pg.style.transform=`translate(${tx}px,${ty}px) scale(${s})`; };
+  const clampPos=()=>{ const W=stage.clientWidth,H=stage.clientHeight,w=IW*s,h=IH*s;
+    tx = w<=W ? (W-w)/2 : Math.min(0,Math.max(W-w,tx));
+    ty = h<=H ? (H-h)/2 : Math.min(0,Math.max(H-h,ty)); };
+  const fit=()=>{ const W=stage.clientWidth,H=stage.clientHeight; minS=Math.min(W/IW,H/IH)*.98; s=minS; clampPos(); apply(); };
+  const zoomAt=(ns,cx,cy)=>{ ns=Math.min(MAXS,Math.max(minS,ns)); const k=ns/s; tx=cx-(cx-tx)*k; ty=cy-(cy-ty)*k; s=ns; clampPos(); apply(); };
+  const rel=e=>{ const r=stage.getBoundingClientRect(); return [e.clientX-r.left,e.clientY-r.top]; };
+  stage.addEventListener('wheel',e=>{ e.preventDefault(); const [x,y]=rel(e); zoomAt(s*Math.exp(-e.deltaY*(e.ctrlKey?.01:.0018)),x,y); },{passive:false});
+  const pts=new Map(); let pinch=null, lastTap=0, moved=0;
+  stage.addEventListener('pointerdown',e=>{ if(e.target.closest('.tools')) return; stage.setPointerCapture(e.pointerId); pts.set(e.pointerId,rel(e)); moved=0;
+    if(pts.size===2){ const [a,b]=[...pts.values()]; pinch={d:Math.hypot(a[0]-b[0],a[1]-b[1]),s}; } else stage.classList.add('drag'); });
+  stage.addEventListener('pointermove',e=>{ if(!pts.has(e.pointerId)) return; const p=rel(e), q=pts.get(e.pointerId);
+    if(pts.size===1){ tx+=p[0]-q[0]; ty+=p[1]-q[1]; moved+=Math.abs(p[0]-q[0])+Math.abs(p[1]-q[1]); clampPos(); apply(); pts.set(e.pointerId,p); }
+    else if(pts.size===2&&pinch){ const o=[...pts.entries()].find(([id])=>id!==e.pointerId)[1];
+      const om=[(q[0]+o[0])/2,(q[1]+o[1])/2]; pts.set(e.pointerId,p); const nm=[(p[0]+o[0])/2,(p[1]+o[1])/2];
+      tx+=nm[0]-om[0]; ty+=nm[1]-om[1]; moved=99; zoomAt(pinch.s*Math.hypot(p[0]-o[0],p[1]-o[1])/pinch.d,nm[0],nm[1]); } });
+  const up=e=>{ if(!pts.has(e.pointerId)) return; const p=rel(e); pts.delete(e.pointerId); if(pts.size<2) pinch=null;
+    if(pts.size===0){ stage.classList.remove('drag');
+      if(moved<8){ const now=performance.now(); if(now-lastTap<320){ zoomAt(s<minS*1.6?Math.max(1,minS*2.5):minS,p[0],p[1]); lastTap=0; } else lastTap=now; } }
+    else { const [id,v]=[...pts.entries()][0]; pts.set(id,v); } };
+  stage.addEventListener('pointerup',up); stage.addEventListener('pointercancel',up);
+  const cen=()=>[stage.clientWidth/2,stage.clientHeight/2];
+  modal.querySelector('.tools').onclick=e=>{ const z=e.target.closest('button')?.dataset.z; if(!z) return;
+    if(z==='in') zoomAt(s*1.5,...cen()); else if(z==='out') zoomAt(s/1.5,...cen()); else if(z==='fit') fit();
+    else if(z==='cap'){ modal.querySelector('.cap').classList.toggle('hide'); requestAnimationFrame(()=>{clampPos();apply();}); } };
+  addEventListener('resize',()=>{ if(modal.classList.contains('show')){ const old=minS; const W=stage.clientWidth,H=stage.clientHeight; minS=Math.min(W/IW,H/IH)*.98; if(s<=old*1.001) fit(); else {s=Math.max(s,minS);clampPos();apply();} } });
+  addEventListener('keydown',e=>{ if(!modal.classList.contains('show')) return; if(e.key==='+'||e.key==='=') zoomAt(s*1.5,...cen()); else if(e.key==='-') zoomAt(s/1.5,...cen()); else if(e.key==='0') fit(); });
+  return { open(){ modal.classList.add('show'); fit(); hint.style.opacity=1; clearTimeout(hintT); hintT=setTimeout(()=>hint.style.opacity=0,3500); } };
+})();
+modal.querySelector('.zl').style.transition='opacity .6s';
+$('btnMap').onclick=()=>MV.open();
 modal.querySelector('.x').onclick=()=>modal.classList.remove('show');
-modal.onclick=e=>{if(e.target===modal)modal.classList.remove('show');};
 addEventListener('keydown',e=>{if(e.key==='Escape'){ if(modal.classList.contains('show')) modal.classList.remove('show'); else if(walking) exitWalk(); else deselect(); }});
 
 /* 晴昼 / 暮色 */

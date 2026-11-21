@@ -1056,6 +1056,35 @@ const ST=[
  {n:'花市街',a:[2.5,18],b:[33,18],w:1.4},{n:'木厂街',a:[2.5,33],b:[33,33],w:1.4},
  {n:'',a:[33,16],b:[76,16],w:1.3},{n:'',a:[33,23.6],b:[76,23.6],w:1.1},{n:'',a:[33,35.6],b:[76,35.6],w:1.1},
 ];
+/* 街景占地：县治照壁、申明亭、总铺、旌善亭、水井（水井为示意，志书未载） */
+const WELLS=[[-38.4,18.6],[-51.6,31.5],[11.6,20.2],[34.6,26],[-7.2,-33.6],[53.6,-33.6],[-20,14.4],[63,13.8]];
+const PROP_RECTS=[[-43.2,1.5,-34.8,3.1],[-50,1.5,-43.2,4.4],[-34.8,1.5,-31.2,4.4],...WELLS.map(([x,z])=>[x-.9,z-.9,x+.9,z+.9])];
+/* 小巷：街区内部开巷连接街道（图中未画，按华北县城常制示意）；不临街的人家门开在巷两侧 */
+{
+  const LW=1.0, base=ST.slice(), ZE=HZ-1.4, XE=HX-1.4;
+  const OBS=[...LM.filter(l=>l.type&&!['gate','arch','sub'].includes(l.type)).map(l=>[l.x-l.w/2-.4,l.z-l.d/2-.4,l.x+l.w/2+.4,l.z+l.d/2+.4]),...PROP_RECTS];
+  const onSt=(x,z)=>base.some(s=>{ const dx=s.b[0]-s.a[0],dz=s.b[1]-s.a[1],t=Math.max(0,Math.min(1,((x-s.a[0])*dx+(z-s.a[1])*dz)/(dx*dx+dz*dz)));
+    return Math.hypot(x-s.a[0]-t*dx,z-s.a[1]-t*dz)<s.w/2+.05; });
+  const add=(vert,c,ua,ub)=>{ const u0=Math.min(ua,ub), u1=Math.max(ua,ub), P=u=>vert?[c,u]:[u,c];
+    // 与平行街道太近则不开
+    if(base.some(s=>{ const sv=Math.abs(s.a[0]-s.b[0])<.01; if(sv!==vert) return false; const sc=vert?s.a[0]:s.a[1], sa=Math.min(vert?s.a[1]:s.a[0],vert?s.b[1]:s.b[0]), sb=Math.max(vert?s.a[1]:s.a[0],vert?s.b[1]:s.b[0]);
+      return Math.abs(sc-c)<3.4&&sa<u1&&sb>u0; })) return;
+    let pcs=[[u0,u1]];
+    for(const [a,b,e,f] of OBS){ const [cl,ch,ul,uh]=vert?[a,e,b,f]:[b,f,a,e];
+      if(c+LW/2<=cl||c-LW/2>=ch) continue;
+      pcs=pcs.flatMap(([p,q])=>uh<=p||ul>=q?[[p,q]]:[[p,ul],[uh,q]].filter(([m,n])=>n>m)); }
+    for(const [p,q] of pcs){ if(q-p<2.5||(!onSt(...P(p))&&!onSt(...P(q)))) continue; ST.push({n:'',a:P(p),b:P(q),w:LW,lane:1}); }
+  };
+  const vL=(xa,xb,z0,z1,step=7.5)=>{ const n=Math.max(1,Math.round((xb-xa)/step)); for(let k=1;k<n;k++) add(true,xa+(xb-xa)*k/n,z0,z1); };
+  const hL=(za,zb,x0,x1,step=9)=>{ const n=Math.max(1,Math.round((zb-za)/step)); for(let k=1;k<n;k++) add(false,za+(zb-za)*k/n,x0,x1); };
+  vL(-XE-1.2,XE+1.2,-36,-ZE,8);                                        // 北城根
+  for(const [a,b] of [[-XE,-49.5],[-49.5,-5.2],[9.6,51.6],[51.6,XE]]) hL(-36,0,a,b);   // 大街以北各街区
+  hL(0,16.5,-XE,2.5,8.25);                                             // 西大街与油坊街之间
+  vL(-40,2.5,16.5,30); vL(-40,2.5,30,ZE);                              // 西南
+  hL(16.5,HZ-1,-53,-40,8); hL(16.5,HZ-1,-XE,-53,8);
+  vL(2.5,33,0,18); vL(2.5,33,18,33); vL(2.5,33,33,ZE);                 // 南街与大成坊街之间（花市街、木厂街）
+  vL(33,XE,0,16); vL(33,XE,23.6,35.6); vL(33,XE,35.6,ZE);              // 东南
+}
 
 /* ============ 地面、街道 ============ */
 const world=new THREE.Group(); scene.add(world);
@@ -1150,67 +1179,107 @@ for(const L of LM){
 
 /* ============ 街景：照壁、水井 ============ */
 const streetProps=new THREE.Group(); world.add(streetProps);
-const EXTRA=[];
-screenWall(streetProps,-39,2.12,7); EXTRA.push([-43.2,1.5,-34.8,3.1]);       // 县治照壁（隔西大街相对）
-EXTRA.push([-50,1.5,-43.2,4.4],[-34.8,1.5,-31.2,4.4]);                         // 申明亭、总铺、旌善亭
-for(const [x,z] of [[-38.4,18.6],[-51.6,31.5],[11.6,20.2],[34.6,26],[-7.2,-33.6],[53.6,-33.6],[-20,14.4],[63,13.8]]){
-  well(streetProps,x,z,x*.7); EXTRA.push([x-.9,z-.9,x+.9,z+.9]);
-}
+const EXTRA=PROP_RECTS;
+screenWall(streetProps,-39,2.12,7);                                            // 县治照壁（隔西大街相对）
+for(const [x,z] of WELLS) well(streetProps,x,z,x*.7);
 streetProps.traverse(o=>{ if(o.isMesh){ o.castShadow=o.receiveShadow=true; pickables.push(o); o.userData.lid=null; } });
 
-/* ============ 民居与店铺（实例化填充） ============ */
+/* ============ 民居：院落（正房、厢房、院墙、门楼）；大街两侧前店后宅 ============ */
 let houseBody=null;
+/* 房屋与院墙占地（轴对齐矩形），供漫步碰撞 */
+const HBOX=new Map();
+function hbAdd(x0,z0,x1,z1){ for(let i=Math.floor((x0-.35)/2);i<=Math.floor((x1+.35)/2);i++) for(let j=Math.floor((z0-.35)/2);j<=Math.floor((z1+.35)/2);j++){ const k=i*1000+j; let a=HBOX.get(k); if(!a) HBOX.set(k,a=[]); a.push([x0,z0,x1,z1]); } }
+function hboxHit(x,z,r){ const a=HBOX.get(Math.floor(x/2)*1000+Math.floor(z/2)); if(!a) return false;
+  for(const [x0,z0,x1,z1] of a) if(x>x0-r&&x<x1+r&&z>z0-r&&z<z1+r) return true; return false; }
 {
-  const rects=[...LM.filter(l=>l.type&&l.type!=='gate').map(l=>[l.x-l.w/2-.7,l.z-l.d/2-.7,l.x+l.w/2+.7,l.z+l.d/2+.7]),...EXTRA];
-  const segDist=(px,pz,[ax,az],[bx,bz])=>{const dx=bx-ax,dz=bz-az,t=Math.max(0,Math.min(1,((px-ax)*dx+(pz-az)*dz)/(dx*dx+dz*dz)));return Math.hypot(px-ax-t*dx,pz-az-t*dz);};
   let seed=7; const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
-  const houses=[];
-  /* 房屋占地（含屋檐、门前幌子/水缸）不得压到街面：沿轮廓取样，返回最大侵入量及所压街道 */
-  const CLR=.12;
-  const intrude=(hs,ret)=>{
-    const c=Math.cos(hs.ry), sn=Math.sin(hs.ry), hx=(hs.w+.3)/2, zb=-(hs.d+.35)/2, zf=hs.d/2+.45;
-    let worst=0, ws=null;
-    const nx=Math.max(2,Math.ceil(hx*2/.35)), nz=Math.max(2,Math.ceil((zf-zb)/.35));
-    for(let i=0;i<=nx;i++) for(let k=0;k<=nz;k++){
-      if(i>0&&i<nx&&k>0&&k<nz) continue;
-      const lx=-hx+2*hx*i/nx, lz=zb+(zf-zb)*k/nz;
-      const px=hs.x+lx*c+lz*sn, pz=hs.z-lx*sn+lz*c;
-      for(const s of ST){ const v=s.w/2+CLR-segDist(px,pz,s.a,s.b); if(v>worst){worst=v;ws=s;} }
-    }
-    if(ret) ret.s=ws; return worst;
-  };
-  const fitHouse=hs=>{
-    for(let it=0;it<4;it++){
-      const r={}, v=intrude(hs,r); if(v<=0) return !rects.some(([a,b,c,d])=>hs.x>a&&hs.x<c&&hs.z>b&&hs.z<d);
-      const s=r.s, dx=s.b[0]-s.a[0], dz=s.b[1]-s.a[1], L=Math.hypot(dx,dz);
-      let nx=-dz/L, nz=dx/L; if((hs.x-s.a[0])*nx+(hs.z-s.a[1])*nz<0){nx=-nx;nz=-nz;}
-      hs.x+=nx*(v+.04); hs.z+=nz*(v+.04);
-    }
-    return false;
-  };
-  const STEP=2.75;
-  for(let x=-HX+2.6;x<HX-2;x+=STEP) for(let z=-HZ+2.6;z<HZ-2;z+=STEP){
-    const jx=x+(rnd()-.5)*.35, jz=z+(rnd()-.5)*.35;
-    if(rects.some(([a,b,c,d])=>jx>a&&jx<c&&jz>b&&jz<d)) continue;
-    let near=1e9, ns=null;
-    for(const s of ST){ const dd=segDist(jx,jz,s.a,s.b)-s.w/2; if(dd<near){near=dd;ns=s;} }
-    if(near<.95) continue;
-    const r=rnd();
-    const mainSt=ns&&ns.w>=2.6&&near<2.2;
-    if(r<.12&&!mainSt){ if(r<.06) addTree(jx,jz,.8+rnd()*.5,rnd()<.3?3:0); continue; }
-    const horizSt=ns&&Math.abs(ns.a[1]-ns.b[1])<.01;
-    let ry=0;
-    if(mainSt){ ry=horizSt?(jz>ns.a[1]?Math.PI:0):(jx>ns.a[0]?-Math.PI/2:Math.PI/2); }
-    const w=mainSt?2.3+rnd()*.3:1.9+rnd()*.5, d=mainSt?1.5:1.1+rnd()*.35, h=mainSt?1.25+rnd()*.35:.72+rnd()*.2;
-    const hs={x:jx,z:jz,w,d,h,ry,shop:mainSt};
-    if(!fitHouse(hs)) continue;
-    houses.push(hs);
-    if(!mainSt&&rnd()<.55){ // 厢房
-      const sg=rnd()<.5?-1:1;
-      const wg={x:hs.x+sg*(w/2-.4),z:hs.z+d/2+.55,w:1.1,d:.8,h:.62,ry:Math.PI/2,wing:1};
-      if(intrude(wg)<=0) houses.push(wg);
+  const houses=[], walls=[];
+  /* 占用检测：街巷路面、名胜、街景、已划宅地 */
+  const OG=new Map(), ogAdd=r=>{ for(let i=Math.floor(r[0]/4);i<=Math.floor(r[2]/4);i++) for(let j=Math.floor(r[1]/4);j<=Math.floor(r[3]/4);j++){ const k=i*1000+j; let a=OG.get(k); if(!a) OG.set(k,a=[]); a.push(r); } };
+  const free=(x0,z0,x1,z1)=>{
+    if(x0<-HX+1.35||x1>HX-1.35||z0<-HZ+1.35||z1>HZ-1.35) return false;
+    for(let i=Math.floor(x0/4);i<=Math.floor(x1/4);i++) for(let j=Math.floor(z0/4);j<=Math.floor(z1/4);j++){ const a=OG.get(i*1000+j); if(a) for(const r of a) if(x0<r[2]&&x1>r[0]&&z0<r[3]&&z1>r[1]) return false; }
+    return true; };
+  for(const s of ST){ const w=s.w/2+.1; ogAdd([Math.min(s.a[0],s.b[0])-w,Math.min(s.a[1],s.b[1])-w,Math.max(s.a[0],s.b[0])+w,Math.max(s.a[1],s.b[1])+w]); }
+  for(const l of LM) if(l.type&&!['gate','arch','sub'].includes(l.type)) ogAdd([l.x-l.w/2-.35,l.z-l.d/2-.35,l.x+l.w/2+.35,l.z+l.d/2+.35]);
+  for(const r of EXTRA) ogAdd(r);
+
+  const T=.1;
+  const wallSeg=(x0,z0,x1,z1)=>{ const lx=Math.abs(x1-x0)+T, lz=Math.abs(z1-z0)+T; if(Math.max(lx,lz)<.25) return;
+    walls.push([(x0+x1)/2,(z0+z1)/2,lx,lz]); hbAdd(Math.min(x0,x1)-T/2,Math.min(z0,z1)-T/2,Math.max(x0,x1)+T/2,Math.max(z0,z1)+T/2); };
+  const bld=o=>{ houses.push(o); const c=Math.abs(Math.cos(o.ry))>.5, hx=(c?o.w:o.d)/2, hz=(c?o.d:o.w)/2; hbAdd(o.x-hx,o.z-hz,o.x+hx,o.z+hz); };
+  const RY={S:0,N:Math.PI,E:Math.PI/2,W:-Math.PI/2}, NRM={S:[0,1],N:[0,-1],E:[1,0],W:[-1,0]};
+  /* 带门洞的墙：沿 x（水平）或沿 z，从 a 到 b，门洞中心 g、宽 gw */
+  const wallGap=(horiz,c,a,b,g,gw)=>{ const P=(u)=>horiz?[u,c]:[c,u];
+    if(g==null){ wallSeg(...P(a),...P(b)); return; } wallSeg(...P(a),...P(g-gw/2)); wallSeg(...P(g+gw/2),...P(b)); };
+
+  /* 前店后宅：临大街铺面一座，后有小院与后房 */
+  function shopLot(x0,z0,x1,z1,acc){
+    const horiz=acc==='N'||acc==='S', along=horiz?x1-x0:z1-z0, dep=horiz?z1-z0:x1-x0, [nx,nz]=NRM[acc], ry=RY[acc];
+    const cx=(x0+x1)/2, cz=(z0+z1)/2, fd=Math.min(1.5,dep-.05), h=1.25+rnd()*.35;
+    bld({x:cx+nx*(dep/2-fd/2),z:cz+nz*(dep/2-fd/2),w:along-.08,d:fd,h,ry,shop:1});
+    if(dep<3.4) return;
+    const bd=1.05; bld({x:cx-nx*(dep/2-.06-bd/2),z:cz-nz*(dep/2-.06-bd/2),w:along-.4,d:bd,h:.78+rnd()*.15,ry,back:1});
+    // 院墙：两侧与后墙
+    const fIn=dep/2-fd; // 铺面后沿到中心
+    if(horiz){ const zf=cz+nz*fIn, zb=cz-nz*(dep/2-T/2);
+      wallSeg(x0+T/2,zf,x0+T/2,zb); wallSeg(x1-T/2,zf,x1-T/2,zb); wallSeg(x0+T/2,zb,x1-T/2,zb); }
+    else { const xf=cx+nx*fIn, xb=cx-nx*(dep/2-T/2);
+      wallSeg(xf,z0+T/2,xb,z0+T/2); wallSeg(xf,z1-T/2,xb,z1-T/2); wallSeg(xb,z0+T/2,xb,z1-T/2); }
+    if(rnd()<.25) addTree(cx-nx*(dep/2-fd)*.1,cz-nz*(dep/2-fd)*.1,.5+rnd()*.2,0);
+  }
+  /* 合院：正房坐北朝南（门开北面时正房居南朝北），厢房 0–2 间，四围院墙，门楼开向街巷 */
+  function houseLot(x0,z0,x1,z1,acc){
+    const A=x1-x0, B=z1-z0, f=acc==='N'?-1:1, zBack=f>0?z0:z1, zFr=f>0?z1:z0, cx=(x0+x1)/2;
+    const md=Math.min(1.05+rnd()*.25,B-1.25), mw=Math.min(A-.3,2.7), mh=.74+rnd()*.18;
+    bld({x:cx,z:zBack+f*(.06+md/2),w:mw,d:md,h:mh,ry:f>0?0:Math.PI});
+    const zMF=zBack+f*(.06+md), yard=Math.abs(zFr-zMF), wd=.72, wl=Math.min(1.5,yard-1.1);
+    if(wl>=.8){ const both=A>=2.75;
+      for(const sd of [-1,1]){
+        if((acc==='E'&&sd>0)||(acc==='W'&&sd<0)) continue;
+        if(rnd()<(both?.38:.6)) continue; if(!both&&houses.at(-1).wing) continue;
+        bld({x:sd<0?x0+.06+wd/2:x1-.06-wd/2,z:zMF+f*(.08+wl/2),w:wl,d:wd,h:.6+rnd()*.08,ry:sd<0?Math.PI/2:-Math.PI/2,wing:1});
+      } }
+    const gw=.78; let gx=null, gz=null;
+    if(acc==='S'||acc==='N'){ gx=x1-.68; bld({x:gx,z:acc==='S'?z1-.06:z0+.06,w:gw,d:.42,h:.82,ry:RY[acc],gate:1}); }
+    else { gz=z1-.68; bld({x:acc==='E'?x1-.06:x0+.06,z:gz,w:gw,d:.42,h:.82,ry:RY[acc],gate:1}); }
+    wallGap(true,z0+T/2,x0+T/2,x1-T/2,acc==='N'?gx:null,gw+.04);
+    wallGap(true,z1-T/2,x0+T/2,x1-T/2,acc==='S'?gx:null,gw+.04);
+    wallGap(false,x0+T/2,z0+T/2,z1-T/2,acc==='W'?gz:null,gw+.04);
+    wallGap(false,x1-T/2,z0+T/2,z1-T/2,acc==='E'?gz:null,gw+.04);
+    if(yard>1.7&&rnd()<.3) addTree(cx+(rnd()-.5)*.4,(zMF+zFr)/2,.5+rnd()*.25,rnd()<.3?3:0);
+  }
+  /* 沿街巷两侧依次划宅地 */
+  function lineLots(s,shop){
+    const horiz=Math.abs(s.a[1]-s.b[1])<.01, c=horiz?s.a[1]:s.a[0], u0=Math.min(horiz?s.a[0]:s.a[1],horiz?s.b[0]:s.b[1]), u1=Math.max(horiz?s.a[0]:s.a[1],horiz?s.b[0]:s.b[1]);
+    for(const side of [-1,1]){
+      const near=c+side*(s.w/2+.12), acc=horiz?(side<0?'S':'N'):(side<0?'E':'W');
+      let u=u0-s.w/2;
+      while(u<u1+s.w/2){
+        let ok=false;
+        const aws=shop?[2.3+rnd()*.6,2.1]:[2.9+rnd()*.7,2.6];
+        const dps=shop?[4.4+rnd()*.4,3.8,3.4,2.2]:[3.4+rnd()*.5,3.1,2.8,2.5];
+        outer: for(const aw of aws) for(const dp of dps){
+          const p0=Math.min(near,near+side*dp), p1=Math.max(near,near+side*dp);
+          const r=horiz?[u,p0,u+aw,p1]:[p0,u,p1,u+aw];
+          if(!free(...r)) continue;
+          ogAdd([r[0]+.02,r[1]+.02,r[2]-.02,r[3]-.02]);
+          (shop?shopLot:houseLot)(...r,acc); u+=aw+.04; ok=true; break outer;
+        }
+        if(!ok) u+=.4;
+      }
     }
   }
+  for(const s of ST) if(s.w>=2.6) lineLots(s,true);
+  for(const s of ST) if(s.w<2.6&&!s.lane) lineLots(s,false);
+  for(const s of ST) if(s.lane) lineLots(s,false);
+  /* 余地：不临街巷的院落或菜园树丛 */
+  for(let x=-HX+1.4;x<HX-4;x+=1.1) for(let z=-HZ+1.4;z<HZ-4;z+=1.1){
+    const a=3+rnd()*.5, b=3+rnd()*.5; if(!free(x,z,x+a,z+b)) continue;
+    ogAdd([x,z,x+a,z+b]);
+    if(rnd()<.7) houseLot(x,z,x+a,z+b,'S'); else for(let k=0;k<3;k++) addTree(x+.5+rnd()*(a-1),z+.5+rnd()*(b-1),.7+rnd()*.5,rnd()<.3?3:0);
+  }
+
   const N=houses.length;
   const bodyM=new THREE.InstancedMesh(geoBox,triMat(0xffffff,'plaster'),N);
   const hrm=triMat(0x5d6064,'roof'); hrm.side=THREE.DoubleSide;
@@ -1220,17 +1289,27 @@ let houseBody=null;
   const dm=new THREE.Object3D(), col=new THREE.Color();
   houses.forEach((hs,i)=>{
     dm.position.set(hs.x,0,hs.z); dm.rotation.set(0,hs.ry,0); dm.scale.set(hs.w,hs.h,hs.d); dm.updateMatrix(); bodyM.setMatrixAt(i,dm.matrix);
-    dm.position.y=hs.h-.03; dm.scale.set(hs.w+.3,hs.shop?.62:.5,hs.d+.35); dm.updateMatrix(); roofM.setMatrixAt(i,dm.matrix);
+    dm.position.y=hs.h-.03; dm.scale.set(hs.w+(hs.gate?.2:.3),hs.shop?.62:hs.gate?.3:.5,hs.d+(hs.gate?.3:.35)); dm.updateMatrix(); roofM.setMatrixAt(i,dm.matrix);
     const k=rnd();
-    bodyM.setColorAt(i,col.setHex(hs.shop?(k<.5?0xb79a74:0xc7b08a):(k<.5?0xd3c9b4:0xc2b79f)));
+    bodyM.setColorAt(i,col.setHex(hs.gate?(k<.5?0x9a9286:0x8b8479):hs.shop?(k<.5?0xb79a74:0xc7b08a):(k<.5?0xd3c9b4:0xc2b79f)));
     dm.position.set(hs.x,0,hs.z); dm.rotation.set(0,hs.ry,0); dm.translateZ(hs.d/2+.012);
-    dm.scale.set(hs.shop?hs.w*.85:hs.w*.42,hs.shop?hs.h*.72:hs.h*.75,1); dm.updateMatrix(); facM.setMatrixAt(i,dm.matrix);
+    dm.scale.set(hs.shop?hs.w*.85:hs.gate?hs.w*.5:hs.w*.42,hs.shop?hs.h*.72:hs.gate?hs.h*.78:hs.h*.75,1); dm.updateMatrix(); facM.setMatrixAt(i,dm.matrix);
   });
   for(const m of [bodyM,roofM]){ m.castShadow=m.receiveShadow=true; world.add(m); }
   facM.receiveShadow=true; world.add(facM);
-  /* 店铺幌子、檐下灯笼；民居门前水缸 */
+  /* 院墙（夯土抹灰）与墙帽 */
   {
-    const shops=houses.filter(h=>h.shop), homes=houses.filter(h=>!h.shop&&!h.wing);
+    const WH=.5, wm=new THREE.InstancedMesh(geoBox,triMat(0xffffff,'plaster'),walls.length), cm=new THREE.InstancedMesh(geoBox,M(0x5f6266),walls.length);
+    walls.forEach(([x,z,lx,lz],i)=>{
+      dm.position.set(x,0,z); dm.rotation.set(0,0,0); dm.scale.set(lx,WH,lz); dm.updateMatrix(); wm.setMatrixAt(i,dm.matrix);
+      wm.setColorAt(i,col.setHex(rnd()<.5?0xc9bea7:0xbcb29b));
+      dm.position.y=WH; dm.scale.set(lx+.06,.05,lz+.06); dm.updateMatrix(); cm.setMatrixAt(i,dm.matrix);
+    });
+    for(const m of [wm,cm]){ m.castShadow=m.receiveShadow=true; world.add(m); }
+  }
+  /* 店铺幌子、檐下灯笼；正房门前水缸 */
+  {
+    const shops=houses.filter(h=>h.shop), homes=houses.filter(h=>!h.shop&&!h.wing&&!h.gate&&!h.back);
     const signM=new THREE.InstancedMesh(geoBox,new THREE.MeshStandardMaterial({roughness:.7}),shops.length);
     const lanI=new THREE.InstancedMesh(lanGeo,lanternMat,shops.length*2);
     const jarGeo=lathe([[0,0],[.08,0],[.12,.08],[.12,.16],[.08,.22],[.085,.24],[.07,.24]],10);
@@ -1244,8 +1323,8 @@ let houseBody=null;
       for(const sg of [-1,1]){ o.position.set(hs.x,0,hs.z); o.rotation.set(0,hs.ry,0); o.scale.set(1,1,1);
         o.translateX(sg*(hs.w/2-.42)); o.translateZ(hs.d/2+.2); o.position.y=hs.h-.3; o.scale.set(.075,.095,.075); o.updateMatrix(); lanI.setMatrixAt(li++,o.matrix); }
     });
-    homes.forEach(hs=>{ if(rnd()<.4){ o.position.set(hs.x,0,hs.z); o.rotation.set(0,hs.ry+rnd()*3,0); o.scale.set(1,1,1);
-      o.translateX((rnd()<.5?-1:1)*(hs.w/2-.15)); o.translateZ(hs.d/2+.32); o.updateMatrix(); jarI.setMatrixAt(ji++,o.matrix); } });
+    homes.forEach(hs=>{ if(rnd()<.4){ o.position.set(hs.x,0,hs.z); o.rotation.set(0,hs.ry,0); o.scale.set(1,1,1);
+      o.translateX((rnd()<.5?-1:1)*(hs.w/2-.15)); o.translateZ(hs.d/2+.25); o.updateMatrix(); jarI.setMatrixAt(ji++,o.matrix); } });
     jarI.count=ji;
     for(const m of [signM,lanI,jarI]){ m.castShadow=true; world.add(m); }
   }
@@ -1428,7 +1507,8 @@ for(const [t,x,z,y] of STATIC) addPerson(t,x,z,y);
 /* 摊棚与摊贩 */
 {
   let sd=77; const r=()=>(sd=(sd*16807)%2147483647)/2147483647;
-  const vertX=ST.filter(s=>Math.abs(s.a[0]-s.b[0])<.01).map(s=>s.a[0]), horZ=ST.filter(s=>Math.abs(s.a[1]-s.b[1])<.01).map(s=>s.a[1]);
+  const vertX=ST.filter(s=>Math.abs(s.a[0]-s.b[0])<.01&&Math.min(Math.abs(s.a[1]),Math.abs(s.b[1]))<2).map(s=>s.a[0]),
+        horZ=ST.filter(s=>Math.abs(s.a[1]-s.b[1])<.01&&Math.min(Math.abs(s.a[0]-2.5),Math.abs(s.b[0]-2.5))<2).map(s=>s.a[1]);
   const fronts=LM.filter(l=>l.type&&l.type!=='gate'&&Math.abs(l.z+l.d/2+2.5)<1.3);
   for(let x=-73;x<=73;x+=2.4){ for(const side of [-1,1]){
     if(r()<.5||Math.abs(x-2.5)<4||vertX.some(v=>Math.abs(v-x)<2.2)) continue;
@@ -1731,9 +1811,10 @@ let walking=false, yaw=0, pitch=0, lastT=performance.now();
 const EYE=.48, RAD=.28, keys=new Set();
 const player=new THREE.Vector3(2.5,EYE,46);
 const colRay=new THREE.Raycaster(); colRay.far=1;
-const colliders=()=>houseBody?[...pickables,houseBody]:pickables;
+const colliders=()=>pickables;
 function look(dx,dy){ yaw-=dx*.0042; pitch=THREE.MathUtils.clamp(pitch-dy*.0036,-1.2,1.05); }
 function blocked(from,dir,dist){
+  if(hboxHit(from.x+dir.x*dist,from.z+dir.z*dist,RAD)) return true;
   colRay.set(new THREE.Vector3(from.x,.66,from.z),dir); colRay.far=dist+RAD;
   return colRay.intersectObjects(cols,false).length>0;
 }

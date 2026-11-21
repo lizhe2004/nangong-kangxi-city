@@ -276,7 +276,7 @@ camera.position.copy(HOME.pos);
 const controls=new OrbitControls(camera,renderer.domElement);
 controls.target.copy(HOME.tgt); controls.enableDamping=true; controls.dampingFactor=.08;
 controls.maxPolarAngle=1.42; controls.minDistance=8; controls.maxDistance=360;
-controls.autoRotateSpeed=.6;
+controls.autoRotateSpeed=.6; controls.screenSpacePanning=false;
 
 const hemi=new THREE.HemisphereLight(0xfff4dc,0x7d6a48,1.15); scene.add(hemi);
 const sun=new THREE.DirectionalLight(0xfff0d2,2.3);
@@ -1370,11 +1370,11 @@ function pick(e){
 }
 renderer.domElement.style.touchAction='none';
 const TOUCH=matchMedia('(pointer: coarse)').matches||/[?&]touch/.test(location.search);
-if(TOUCH){ document.body.classList.add('touch'); document.getElementById('hint').textContent='单指旋转 · 双指缩放平移 · 点按建筑查看'; }
+if(TOUCH){ controls.rotateSpeed=.55; controls.panSpeed=.7; controls.zoomSpeed=.8; document.body.classList.add('touch'); document.getElementById('hint').textContent='单指旋转 · 双指缩放平移 · 点按建筑查看'; }
 const lastXY=new Map();
 renderer.domElement.addEventListener('pointermove',e=>{
   const lp=lastXY.get(e.pointerId);
-  if(walking&&down&&lp){ const k=e.pointerType==='touch'?1.5:1; look((e.clientX-lp[0])*k,(e.clientY-lp[1])*k); }
+  if(walking&&down&&lp){ const k=e.pointerType==='touch'?1.05:1; look((e.clientX-lp[0])*k,(e.clientY-lp[1])*k); }
   if(lp) lastXY.set(e.pointerId,[e.clientX,e.clientY]);
   if(e.buttons) {tip.style.opacity=0;return;}
   const id=pick(e); setHover(id);
@@ -1517,7 +1517,7 @@ function updateWalk(dt){
   if(keys.has('left')){mx+=fz;mz-=fx;} if(keys.has('right')){mx-=fz;mz+=fx;}
   let l=Math.hypot(mx,mz), amp=1;
   const jm=Math.hypot(joy.x,joy.y);
-  if(jm>.08){ const f=-joy.y, rr=joy.x; mx=fx*f-fz*rr; mz=fz*f+fx*rr; l=Math.hypot(mx,mz); amp=Math.min(1,jm)*(jm>.92?1.9:1); }
+  if(jm>.08){ const f=-joy.y, rr=joy.x; mx=fx*f-fz*rr; mz=fz*f+fx*rr; l=Math.hypot(mx,mz); amp=Math.pow(Math.min(1,jm),1.6)*.4*(jm>.97?1.7:1); }
   if(l>0){ tryMove(mx/l*sp*amp,0); tryMove(0,mz/l*sp*amp); }
   player.x=THREE.MathUtils.clamp(player.x,-230,230); player.z=THREE.MathUtils.clamp(player.z,-230,230);
   const bob=l>0?Math.sin(performance.now()*.012*run)*.012:0;
@@ -1613,6 +1613,8 @@ function loop(now){
   if(fly){ const t=Math.min(1,(now-fly.s)/fly.dur), k=ease(t);
     camera.position.lerpVectors(fly.p0,fly.p1,k); controls.target.lerpVectors(fly.t0,fly.t1,k); if(t>=1) fly=null; }
   controls.update();
+  { const t=controls.target; t.y=THREE.MathUtils.clamp(t.y,0,12); t.x=THREE.MathUtils.clamp(t.x,-260,260); t.z=THREE.MathUtils.clamp(t.z,-260,260);
+    if(camera.position.y<2.5) camera.position.y=2.5; }
   labelsEl.classList.toggle('far',camera.position.distanceTo(controls.target)>150);
   const az=controls.getAzimuthalAngle(); needle.setAttribute('transform',`rotate(${THREE.MathUtils.radToDeg(az)} 27 27)`);
   sky.position.copy(camera.position); composer.render(); lblR.render(scene,camera);

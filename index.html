@@ -1308,21 +1308,59 @@ function placePerson(p,bob,sw){
 }
 for(const p of people) if(!p.moving) placePerson(p,0,0);
 const _pt=new THREE.Vector2();
+/* 人与人避让：每帧建空间网格（行人、静止人物、轿子、玩家） */
+const PR=.12, PLR=.15, SEDR=.55, GRID=new Map(), gk=(x,z)=>(Math.floor(x)+512)*4096+(Math.floor(z)+512);
+function buildGrid(){ GRID.clear();
+  const add=o=>{ const k=gk(o.x,o.z); let a=GRID.get(k); if(!a) GRID.set(k,a=[]); a.push(o); };
+  for(const p of people) add({x:p.x,z:p.z,r:PR,who:p});
+  for(const w of walkers) if(w.sedan) add({x:w.sedan.position.x,z:w.sedan.position.z,r:SEDR,who:w});
+  if(walking) add({x:player.x,z:player.z,r:PLR,who:player}); }
+function near(x,z,rad,fn){ const c=Math.ceil(rad), ix=Math.floor(x), iz=Math.floor(z);
+  for(let i=-c;i<=c;i++) for(let j=-c;j<=c;j++){ const a=GRID.get((ix+i+512)*4096+(iz+j+512)); if(a) for(const o of a) fn(o); } }
+function hitPeople(x0,z0,x1,z1){ let hit=false;
+  near(x1,z1,1,o=>{ if(hit||o.who===player) return; const d=Math.hypot(o.x-x1,o.z-z1);
+    if(d<PLR+o.r&&d<Math.hypot(o.x-x0,o.z-z0)) hit=true; });
+  return hit; }
 function updatePeople(dt){
+  buildGrid();
   for(const w of walkers){
-    const L=w.seg.a.distanceTo(w.seg.b); w.t+=w.dir*w.speed*dt/L;
-    if(w.t>1||w.t<0){ w.t=THREE.MathUtils.clamp(w.t,0,1); const end=w.t>=1?w.seg.b:w.seg.a; nextSeg(w,end.clone()); }
+    const sg=w.seg, L=sg.a.distanceTo(sg.b), ux=(sg.b.x-sg.a.x)/L, uz=(sg.b.y-sg.a.y)/L, fdx=ux*w.dir, fdz=uz*w.dir, nx=-uz, nz=ux;
+    const self=w.sedan?w:w.p, myR=w.sedan?SEDR:PR, skip=o=>o.who===self||(w.sedan&&w.bearers.some(b=>b.p===o.who));
+    if(w.tOff===undefined) w.tOff=w.off;
+    segPt(sg,w.t,w.off,_pt); const cx=_pt.x, cz=_pt.y;
+    // 前方是否有人挡路
+    let blk=null, bAh=9;
+    near(cx,cz,w.sedan?2:1,o=>{ if(skip(o)) return; const rx=o.x-cx, rz=o.z-cz, ah=rx*fdx+rz*fdz, la=rx*nx+rz*nz, rr=myR+o.r+.05;
+      if(ah>0&&ah<rr+.7&&Math.abs(la)<rr&&ah<bAh){ bAh=ah; blk={la,rr}; } });
+    let go=1;
+    if(blk){
+      const lim=w.sedan?0:latLim(sg), oOff=w.off+blk.la;
+      // 优先靠右让行（双方各自靠右即可错身）
+      const c=[oOff+w.dir*blk.rr*1.08, oOff-w.dir*blk.rr*1.08].filter(v=>Math.abs(v)<=lim);
+      w.tOff=c.length?c[0]:w.off;
+      if(!c.length||Math.abs(w.tOff-w.off)>.02) go=THREE.MathUtils.clamp((bAh-blk.rr)/.45,0,1);
+    }
+    const t0=w.t, off0=w.off, dO=w.tOff-w.off, st=.8*dt;
+    w.off+=Math.abs(dO)<st?dO:Math.sign(dO)*st;
+    w.t+=w.dir*w.speed*go*dt/L;
+    if(w.t>1||w.t<0){ w.t=THREE.MathUtils.clamp(w.t,0,1); const end=w.t>=1?w.seg.b:w.seg.a; nextSeg(w,end.clone()); w.tOff=w.off; }
     segPt(w.seg,w.t,w.off,_pt);
+    // 硬约束：不与任何人重叠
+    let ov=false; near(_pt.x,_pt.y,w.sedan?2:1,o=>{ if(ov||skip(o)) return; const d=Math.hypot(o.x-_pt.x,o.z-_pt.y);
+      if(d<myR+o.r&&d<Math.hypot(o.x-cx,o.z-cz)) ov=true; });
+    if(ov&&w.seg===sg){ w.t=t0; w.off=off0; w.tOff=off0; go=0; segPt(sg,w.t,w.off,_pt); }
+    if(go<.05){ w.wait=(w.wait||0)+dt; if(w.wait>3+Math.random()*2){ w.dir*=-1; w.wait=0; } } else w.wait=0;
     const dx=(w.seg.b.x-w.seg.a.x)*w.dir, dz=(w.seg.b.y-w.seg.a.y)*w.dir, yaw=Math.atan2(dx,dz);
     if(w.sedan){
-      w.sedan.position.set(_pt.x,0,_pt.y); w.sedan.rotation.y=yaw; w.ph=(w.ph||0)+dt*w.speed*11;
-      const cs=Math.cos(yaw), sn=Math.sin(yaw);
-      for(const b of w.bearers){ const p=b.p; p.x=_pt.x+b.x*cs+b.z*sn; p.z=_pt.y-b.x*sn+b.z*cs; p.yaw=yaw; p.ph=w.ph; placePerson(p,Math.abs(Math.sin(p.ph))*.01,Math.sin(p.ph)); }
-      w.sedan.position.y=Math.abs(Math.sin(w.ph))*.01; continue;
+      w.sedan.position.set(_pt.x,0,_pt.y); w.sedan.rotation.y=yaw; w.ph=(w.ph||0)+dt*w.speed*11*go;
+      const cs=Math.cos(yaw), sn=Math.sin(yaw), sw=go>.05?1:0;
+      for(const b of w.bearers){ const p=b.p; p.x=_pt.x+b.x*cs+b.z*sn; p.z=_pt.y-b.x*sn+b.z*cs; p.yaw=yaw; p.ph=w.ph; placePerson(p,Math.abs(Math.sin(p.ph))*.01*sw,Math.sin(p.ph)*sw); }
+      w.sedan.position.y=Math.abs(Math.sin(w.ph))*.01*sw; continue;
     }
     const p=w.p; p.x=_pt.x; p.z=_pt.y;
     let dy=yaw-p.yaw; dy=Math.atan2(Math.sin(dy),Math.cos(dy)); p.yaw+=dy*Math.min(1,dt*8);
-    p.ph+=dt*w.speed*11; placePerson(p,Math.abs(Math.sin(p.ph))*.012,Math.sin(p.ph));
+    p.amp=THREE.MathUtils.lerp(p.amp??1,go>.05?1:0,Math.min(1,dt*6));
+    p.ph+=dt*w.speed*11*go; placePerson(p,Math.abs(Math.sin(p.ph))*.012*p.amp,Math.sin(p.ph)*p.amp);
   }
   for(const m of partIM) m.instanceMatrix.needsUpdate=true;
 }
@@ -1539,10 +1577,11 @@ let cols=[];
 function tryMove(mx,mz){
   const len=Math.hypot(mx,mz); if(len<1e-6) return;
   const dir=new THREE.Vector3(mx/len,0,mz/len);
-  if(!blocked(player,dir,len)){ player.x+=mx; player.z+=mz; return; }
-  // 沿墙滑动
-  if(Math.abs(mx)>1e-6&&!blocked(player,new THREE.Vector3(Math.sign(mx),0,0),Math.abs(mx))) player.x+=mx;
-  else if(Math.abs(mz)>1e-6&&!blocked(player,new THREE.Vector3(0,0,Math.sign(mz)),Math.abs(mz))) player.z+=mz;
+  const px=player.x, pz=player.z;
+  if(!blocked(player,dir,len)&&!hitPeople(px,pz,px+mx,pz+mz)){ player.x+=mx; player.z+=mz; return; }
+  // 沿墙、沿人滑动
+  if(Math.abs(mx)>1e-6&&!blocked(player,new THREE.Vector3(Math.sign(mx),0,0),Math.abs(mx))&&!hitPeople(px,pz,px+mx,pz)) player.x+=mx;
+  else if(Math.abs(mz)>1e-6&&!blocked(player,new THREE.Vector3(0,0,Math.sign(mz)),Math.abs(mz))&&!hitPeople(px,pz,px,pz+mz)) player.z+=mz;
 }
 const KEYMAP={KeyW:'fwd',ArrowUp:'fwd',KeyS:'back',ArrowDown:'back',KeyA:'left',KeyD:'right',ArrowLeft:'tl',ArrowRight:'tr',KeyQ:'tl',KeyE:'tr',ShiftLeft:'run',ShiftRight:'run'};
 addEventListener('keydown',e=>{ if(!walking) return; const k=KEYMAP[e.code]; if(k){keys.add(k); e.preventDefault();} });

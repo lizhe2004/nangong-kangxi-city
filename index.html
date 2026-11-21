@@ -110,6 +110,8 @@ body.walking .st{writing-mode:horizontal-tb!important;font-size:13px;letter-spac
 .st{font-size:11.5px;color:#6a4f2a;letter-spacing:.2em;text-shadow:0 0 3px #f2e8d2,0 0 3px #f2e8d2;font-weight:600}
 .hidden-labels .lb,.hidden-streets .st{display:none!important}
 .lb.catoff{display:none}
+.lb.minor{display:none;font-size:11px;font-weight:500}
+body.walking .lb.minor:not(.catoff),.lb.minor.on:not(.catoff){display:flex}
 .far .lb:not(.big):not(.gate):not(.on){display:none}
 
 #tip{position:fixed;pointer-events:none;background:#2a2420;color:#f4ecdc;font-size:13px;padding:4px 9px;border-radius:3px;
@@ -275,7 +277,7 @@ const C={tile:0x5b5f63,tileDark:0x45484b,glaze:0x3e6b57,red:0x983a2e,ochre:0xc49
 
 const CATS={
   gov:{n:'官署',c:'#a8322a'}, edu:{n:'学宫',c:'#2f6b5a'}, temple:{n:'坛庙祠',c:'#b4622a'},
-  buddhist:{n:'寺庵',c:'#a07a1f'}, store:{n:'仓场',c:'#6b5a45'}, tower:{n:'楼阁坊',c:'#3f5590'}, defense:{n:'城防',c:'#4b4b4b'}
+  buddhist:{n:'寺庵',c:'#a07a1f'}, store:{n:'仓场',c:'#6b5a45'}, tower:{n:'楼阁坊',c:'#3f5590'}, arch:{n:'坊表',c:'#7a4f86'}, defense:{n:'城防',c:'#4b4b4b'}
 };
 
 const app=document.getElementById('app');
@@ -652,13 +654,22 @@ const B={
     for(const sg of [-1,1]) hall(g,{x:sg*(w/2-1.4),z:f-10.6,w:7.2,d:1.5,h:.85,base:.12,roof:'gable',wall:0xd0c4aa,ry:-sg*Math.PI/2}); // 六曹
     hall(g,{z:f-20.4,w:4.8,d:2.4,h:1.1,base:.35,pl:'恪共堂'});                                         // 恪共堂
     hall(g,{x:5,z:f-20.4,w:2.4,d:1.6,h:.8,roof:'gable',wall:C.white});                     // 弹琴室
-    hall(g,{x:-(w/2-2),z:f-16.5,w:2,d:1.8,h:.8,storeys:2,roof:'hip',wall:C.red});          // 库楼
+    hall(g,{x:w/2-2,z:f-16.6,w:2,d:1.8,h:.8,storeys:2,roof:'hip',wall:C.red,pl:'库楼'});     // 库楼（东）
+    hall(g,{x:-(w/2-2.1),z:f-15.9,w:2.4,d:1.3,h:.78,base:.12,roof:'gable',wall:C.white,pl:'典史厅'}); // 典史厅（西）
+    hall(g,{x:-(w/2-2.1),z:f-18.4,w:2.4,d:1.3,h:.75,base:.12,roof:'gable',wall:0xa59c8c,pl:'仪仗库'}); // 仪仗库
     for(const sg of [-1,1]) box(g,(w-4)/2-.2,.85,.24,0x8d3b30,sg*((w-4)/4+1.1),0,f-22.6);   // 内宅墙
     hall(g,{z:f-25,w:4.4,d:2.1,h:.95,roof:'gable',wall:C.white});                          // 知县宅
     for(const sg of [-1,1]) hall(g,{x:sg*3.6,z:f-24.6,w:2.4,d:1.2,h:.75,base:.1,roof:'gable',wall:C.white,ry:-sg*Math.PI/2});
+    hall(g,{x:5.9,z:f-24.5,w:2.4,d:1.3,h:.75,base:.1,roof:'gable',wall:C.white,pl:'书房'});   // 书房（宅东）
+    hall(g,{x:5.9,z:f-27.2,w:2.6,d:1.4,h:.8,base:.15,roof:'gable',wall:C.white,pl:'集思堂'}); // 集思堂（康熙十年建）
+    hall(g,{x:-5.9,z:f-25,w:1,d:.9,h:.6,base:.1,roof:'gable',wall:C.red});                  // 土神庙一楹
     hall(g,{z:f-29.6,w:4.8,d:2,h:.95,storeys:2,roof:'hip',wall:C.red});                     // 康熙十年后楼
     for(const sg of [-1,1]) hall(g,{x:sg*4.4,z:f-29.6,w:1.2,d:1.2,h:.8,storeys:2,roof:'pyramid',base:.1}); // 更楼
     for(const sg of [-1,1]) lion(g,sg*2.9,f+.42,0,.95,sg<0);
+    // 鼓楼（谯楼）西为申明亭、东为旌善亭，申明亭西为总铺。县治临街，示意置于西大街对面
+    hall(g,{x:-6,z:21.4,w:1.7,d:1.2,h:.75,base:.15,roof:'gable',wall:C.red,ry:Math.PI,pl:'申明亭'});
+    hall(g,{x:6,z:21.4,w:1.7,d:1.2,h:.75,base:.15,roof:'gable',wall:C.red,ry:Math.PI,pl:'旌善亭'});
+    hall(g,{x:-9.6,z:21.7,w:2.2,d:1.4,h:.75,base:.1,roof:'gable',wall:C.white,ry:Math.PI,pl:'总铺'});
     T(-5.5,f-13,1.2);T(5.6,f-13.5,1.1);T(-4,f-27,1);T(4.5,f-2.8,.9);
   },
   /* 城隍庙：大门—戟门—东西廊各五楹—大殿三楹—寝殿 */
@@ -680,6 +691,7 @@ const B={
     const f=d/2; pave(g,w,d,0xcdbf9f);
     enclosure(g,w,d,{h:1,c:C.red,gate:3});
     hall(g,{pass:1,z:f-.8,w:4.6,d:1.4,h:1,base:.25,roof:'gable',pl:'文庙'});
+    for(const sg of [-1,1]) hall(g,{x:sg*4.5,z:f-1.3,w:1.6,d:1.4,h:.8,base:.15,storeys:2,roof:'hip',door:false});  // 东西两翼楼（万历五年邢侗建）
     const pond=new THREE.Mesh(new THREE.CircleGeometry(2.3,28,0,Math.PI).rotateX(-Math.PI/2),
       new THREE.MeshStandardMaterial({color:0x4b6f78,roughness:.08,metalness:.05}));
     pond.position.set(0,.08,f-3.6); g.add(pond);
@@ -785,6 +797,25 @@ const B={
     pave(g,w,d,0xcdbf9f); enclosure(g,w,d,{h:.55,c:C.red,gate:1.2});
     pavilion(g,0,-.3,1.7); box(g,.45,1.1,.18,0x6d6862,0,.3,-.3); T(1.4,1.3,.7);
   },
+  /* 射圃：观德亭 + 箭道 + 箭靶 */
+  archery(g,{w,d},T){
+    pave(g,w,d,0xb7b08a); enclosure(g,w,d,{h:.7,c:0x9c4a3c,gate:1.6});
+    hall(g,{x:-w/2+2.2,z:.2,w:2.4,d:1.8,h:.85,base:.3,roof:'hip',ry:Math.PI/2,pl:'观德亭'});
+    box(g,w-5.4,.03,1.2,0xc9bd98,1.1,0,.2);                                                   // 箭道
+    for(const dz of [-1.3,1.7]){ box(g,.14,.9,.9,C.wood,w/2-1.1,0,dz); const t=box(g,.06,.62,.62,0xe8dcc0,w/2-1.17,.2,dz);
+      box(g,.07,.3,.3,0xa8322a,w/2-1.18,.36,dz); box(g,.075,.12,.12,0xe8dcc0,w/2-1.185,.45,dz); }
+    T(-1,-2.2,.9);T(2.5,2.3,.8);
+  },
+  /* 坊表：跨街牌坊。L.span 为两柱间距；L.big 为四柱三楼 */
+  arch(g,L){
+    const sp=L.span, c=L.wood?0x8d3b30:0xb0a796, cap=L.wood?C.tile:0x9a9284, big=!!L.grand;
+    const H=big?2.7:2.35, posts=big?[-sp/2,-sp/6,sp/6,sp/2]:[-sp/2,sp/2];
+    for(const x of posts){ box(g,.26,H,.26,c,x,0,0); box(g,.5,.34,.6,0x9a9284,x,0,0); }
+    box(g,sp+.5,.26,.24,c,0,H-.62,0); box(g,sp+.36,.16,.22,c,0,H-.98,0);
+    plaque(g,L.name,0,H-.02,.14,.3,{tilt:0}); plaque(g,L.name,0,H-.02,-.14,.3,{tilt:0,ry:Math.PI});
+    roof(g,(big?sp/3:sp)+.9,.8,.42,'hip',cap,0,H+.02,0);
+    if(big) for(const sg of [-1,1]) roof(g,sp/3+.6,.66,.34,'hip',cap,sg*sp/3,H-.5,0);
+  },
   /* 文昌阁：高台券洞 + 二层方阁 */
   wenchang(g){
     box(g,4.8,2.3,3.6,C.brick); box(g,1.3,1.5,3.7,C.dark);
@@ -829,7 +860,7 @@ const LM=[
  // —— 官署
  {id:'xianzhi',name:'县治',cat:'gov',type:'yamen',x:-39,z:-18.5,w:16,d:32,big:1,
   q:'县治在西大街，成化十六年建。厅事三楹，两翼六曹。廊房之后为恪共堂，又后为知县宅，其东为县丞宅，东南为典史宅……堂之前为月台，为甬道，又前为戒石亭，为仪门，为谯楼。',
-  n:'知县衙门。复原中轴线从南到北依次为：谯楼、仪门、戒石亭、甬道、月台、大堂（两侧为六曹廊房）、恪共堂、知县宅，以及康熙十年知县胡胤铨所建的后楼。后楼两侧各有一座更楼。仪门东侧还建有衙神庙和迎宾馆。',
+  n:'知县衙门。复原中轴线从南到北依次为：谯楼、仪门、戒石亭、甬道、月台、大堂（两侧为六曹廊房）、恪共堂、知县宅，以及康熙十年知县胡胤铨所建的后楼，后楼两侧各有一座更楼。仪门东侧为衙神庙和迎宾馆；恪共堂东为弹琴室，大堂后东为库楼，西为典史厅和仪仗库。知县宅东有书房，书房后为胡胤铨所建的集思堂，宅西有一楹土神庙。谯楼西为申明亭、东为旌善亭，申明亭西为总铺；县治紧临西大街，这三处示意置于街南、照壁两侧。署外的大墙、夹道和更夫铺未复原。',
   pos:'图左页中部，西大街北。'},
  {id:'xiancheng',name:'县丞宅',cat:'gov',type:'residence',x:-24.5,z:-28,w:7,d:8,
   q:'又后为知县宅，其东为县丞宅。',n:'县丞居所，按一般北方四合院复原。',pos:'县治东侧，图中“县丞宅”。'},
@@ -848,7 +879,7 @@ const LM=[
  // —— 学宫
  {id:'wenmiao',name:'文庙',cat:'edu',type:'confucian',x:34,z:-18.5,w:13,d:32,big:1,
   q:'儒学在东大街。至圣庙五楹，成化十七年建。东庑九楹，西庑九楹。前有戟门，有泮池，又前为大门，庙后为尊经阁……启圣祠在文庙后。',
-  n:'从南到北依次为：大门、半月形泮池与泮桥、戟门（两侧为各官祠和乡贤祠）、东西两庑、重檐大成殿、尊经阁、启圣祠。主殿使用绿琉璃瓦示意。',
+  n:'从南到北依次为：大门、半月形泮池与泮桥、戟门（两侧为各官祠和乡贤祠）、东西两庑、重檐大成殿、尊经阁、启圣祠。主殿使用绿琉璃瓦示意。志文又载“文庙东西两翼楼，万历五年邢侗建”，未说明位置，这里示意建在大门两侧。',
   pos:'图右页中部，东大街北。'},
  {id:'ruxue',name:'儒学',cat:'edu',type:'school',x:21,z:-18.5,w:11,d:32,big:1,
   q:'明伦堂三楹，进德斋五楹，修业斋五楹。二斋之南为号舍，凡二十楹。其前为仪门，又前为儒学大门。明伦堂前东为敬一亭，后为会辅堂。由后为教谕宅，其东为训导二宅。',
@@ -909,12 +940,21 @@ const LM=[
  {id:'caochang',name:'草场',cat:'store',type:'hayyard',x:58,z:29.5,w:22,d:9,
   q:'草场在儒学南。知县乔岩以本县军需草束，旧无垛场，寄垛僧寺……坚筑围墙，置监门……堆垛其中，封以糠泥。',
   n:'储存军需草料的场地，四周有围墙，设监门，场内是用糠泥封顶的草垛。原图在此画有六个“D”形草垛。',pos:'城东南，灵官庙之东。'},
+ // —— 志载而图未画者（位置据志文示意）
+ {id:'taipu',name:'太仆分司',cat:'gov',type:'residence',gpl:'太仆分司',x:62,z:-30,w:7,d:7,sx:1,
+  q:'太仆分司在察院东，府馆在太仆分司东。……马王庙在太仆分司西。',n:'太仆寺派驻地方、管理马政的分署。县城图未画，按志文“察院东、府馆西、马王庙东”示意放在察院与府馆之间、马神庙东南。',pos:'察院东北，府馆之西。'},
+ {id:'shengong',name:'沈公去思祠',cat:'temple',type:'shrine',x:55.5,z:-28.5,w:4,d:4.4,sx:1,
+  q:'沈公去思祠在察院东。',n:'百姓为纪念一位离任的沈姓地方官所建的祠，营建志未记其名。县城图未画，按志文示意放在察院东侧、玉带街东。',pos:'察院之东，玉带街东。'},
+ {id:'ziwei',name:'紫微书院',cat:'edu',type:'residence',gpl:'紫微书院',x:38,z:-42.4,w:9,d:6.4,sx:1,
+  q:'紫微书院在儒学东，知县胡嘉谟有会约，载艺文志。',n:'隆庆年间知县胡嘉谟主持讲学的书院，他为书院订立的会约收在艺文志中。县城图未画。儒学东侧紧接文庙，文庙东为察院，都没有空地，这里示意放在文庙以北。',pos:'文庙之北，北城根下。'},
+ {id:'shepu',name:'射圃',cat:'edu',type:'archery',x:21,z:-42.4,w:12,d:6.4,sx:1,
+  q:'射圃在文庙西，知县叶恒嵩置。',n:'学宫习射的场地，古人以射观德。按观德亭、箭道和箭靶复原。县城图未画；文庙西侧即儒学，这里示意放在儒学以北的空地。',pos:'儒学之北，北城根下。'},
  // —— 楼阁坊
  {id:'wenchangge',name:'文昌阁',cat:'tower',type:'wenchang',x:42,z:45.6,w:4.8,d:3.6,
   q:'邑城自南门楼沿而东，不百武为文昌阁，又迤逦而东为魁星楼。（裴绣〈重修南宫文昌阁魁星楼记〉）',
   n:'建在南城墙内侧的高台上，台下有券洞，台上为二层方阁。',pos:'南城根东段。'},
  {id:'kuixing',name:'魁星楼',cat:'tower',type:'kuixing',x:58,z:45.6,w:3.8,d:3.8,
-  q:'魁星楼在阴阳学东。……形家者言谓二神职司文明，得居东南王地。',n:'按八角楼阁复原，与文昌阁同在城东南方位，有“主文运”的寓意。',pos:'文昌阁之东。'},
+  q:'魁星楼在操场东南。……魁星楼在阴阳学东。',n:'按八角楼阁复原，与文昌阁同在城东南方位，有“主文运”的寓意。营建志两处提到魁星楼：“在操场东南”与“在阴阳学东”。县城图只画了这一座，位于草场（“操场”应即草场）东南，与前一条相合；阴阳医学在城西，其东并无楼阁，后一条或为另一座已废的魁星楼，或为误记，未复原。',pos:'文昌阁之东。'},
  {id:'dacheng',name:'大成坊',cat:'tower',type:'paifang',x:33,z:3,w:6,d:1,
   q:'（据图标注，大成坊街因此得名）',n:'牌坊，位于大成坊街北口，面对东大街。',pos:'东大街南侧、大成坊街口。'},
  // —— 城门
@@ -930,6 +970,52 @@ const LM=[
   q:'旧称飞凤冈筑土城，周围八里……嘉靖十八年……以砖砌叠砌陴堞……兹女墙高三丈七尺……增置垛口壹千玖百壹拾玖个……敌台壹拾陆座，腰舖壹拾陆座……议复濬筑护城堤池，周围十里，堤高三丈。',
   n:'成化十四年（1478）漳水泛滥后迁到今址筑城。复原包括砖砌城墙和垛口、十六座敌台及其上的腰铺、四座角楼、护城河，以及外侧堤岸。城墙高度做了适当夸张。',pos:'环城。'},
 ];
+
+/* ============ 坊表（营建志按街列出；形制与位置示意） ============ */
+const ARCH_MEAN={解元:'解元即乡试第一名。',榜眼:'榜眼即殿试一甲第二名。',会魁:'会魁指会试名列前五（五经魁）。',亚魁:'亚魁指乡试第六名。',
+  绣衣:'“绣衣”代指御史。',天官:'“天官”代指吏部。',冬官:'“冬官”代指工部。',金吾:'“金吾”代指京城禁卫武职。',鸿胪:'鸿胪寺掌朝会礼仪。',太常:'太常寺掌祭祀礼乐。',
+  吏部:'吏部掌官员铨选考课。',御史:'御史掌监察纠劾。'};
+const ARCH_SRC={
+  '':'父子尚书坊，兵部尚书白圭、礼部尚书白钺。兄弟进士坊，辛巳科刘濂、乙未科刘汀。历科进士坊，正统壬戌科以下皆列名。历科乡贡进士坊，永乐丁酉科以下皆列名。会魁坊，壬戌科白圭。',
+  东大街:'解元坊，庚子科白钺。榜眼坊，甲辰科白钺。……太常坊，赠博士杨仑。已上在东大街。……奕世崇褒坊……司计名臣坊……已上二坊在东街，旧志未载，今补入。',
+  西大街:'登科坊，丁酉科宋鼐。振德坊，甲子科沈彦文。步月坊，甲子科张刚。进士坊，壬辰科尹宇。已上在西大街。',
+  南街:'亚魁坊，甲子科路享。步蟾坊，庚子科路仁俊。……文魁坊，甲午科白迁。已上在南大街。',
+  北街:'凌霄坊，甲午科关宗。文明坊，癸酉科高崇。……观光坊，癸卯科李茂卿。已上在北大街。'};
+const ARCHES=[];
+{
+  const E=[6.5,13,18.5,24,29,38,43,48,56,61,66,71], Wp=[-12,-16,-20,-24,-28,-55,-60,-65,-70];
+  const S=[5,8.5,12,21.5,25,37,40,43,45.5], N=[-4.5,-8,-11.5,-15,-18.5,-22,-25.5,-29,-32.5,-40,-44];
+  const add=(st,i,name,who,extra={})=>{
+    const ew=st==='东大街'||st==='西大街'||st==='';
+    const x=ew?(st==='东大街'?E:Wp)[i]:2.5, z=ew?0:(st==='南街'?S:N)[i], span=ew?3.75:3.15;
+    ARCHES.push({name,who,st,x,z,span,ry:ew?Math.PI/2:0,...extra}); };
+  [['父子尚书坊','兵部尚书白圭、礼部尚书白钺父子',{grand:1}],['兄弟进士坊','辛巳科进士刘濂、乙未科进士刘汀兄弟',{grand:1}],
+   ['历科进士坊','正统壬戌科以下历科进士（坊上列名）'],['历科乡贡进士坊','永乐丁酉科以下历科乡贡进士（坊上列名）'],['会魁坊','壬戌科白圭']]
+   .forEach(([n,w,e],i)=>add('',i,n,w,e));
+  [['解元坊','庚子科白钺'],['榜眼坊','甲辰科白钺'],['进士坊','丙辰科白杲'],['登云坊','癸酉科曹训'],['世科坊','庚午科白纶'],['流芳坊','庚午科张增'],
+   ['折桂坊','庚午科赵介'],['天衢坊','辛卯科韩继忠'],['绣衣坊','庚戌科杨惟平'],['太常坊','赠博士杨仑'],
+   ['奕世崇褒坊','赠参政韩珂、韩永忠，山西左布政使韩策',{late:1,wood:1}],['司计名臣坊','赠承德郎、户部河南司主事李秉彝，户部河南司主事李鸣春',{late:1,wood:1}]]
+   .forEach(([n,w,e],i)=>add('东大街',i,n,w,e));
+  [['登科坊','丁酉科宋鼐'],['振德坊','甲子科沈彦文'],['步月坊','甲子科张刚'],['进士坊','壬辰科尹宇']].forEach(([n,w],i)=>add('西大街',i+5,n,w));
+  [['亚魁坊','甲子科路享'],['步蟾坊','庚子科路仁俊'],['拔萃坊','辛酉科任恩'],['冬官坊','营缮主事任恩'],['宾贤坊','丙子科白玶'],
+   ['□俊坊','丁丑科白玶',{odd:1}],['金吾坊','兵马路仁杰'],['鸿胪坊','序班任廉甫'],['文魁坊','甲午科白迁',{fix:1}]].forEach(([n,w,e],i)=>add('南街',i,n,w,e));
+  [['凌霄坊','甲午科关宗'],['文明坊','癸酉科高崇'],['飞黄坊','戊午科刘锡'],['御史坊','封监察御史刘锡'],['天官坊','封考功司员外郎刘锡'],['联芳坊','辛酉科孔镐'],
+   ['万选坊','辛酉科孔贤'],['腾蛟坊','庚午科崔汴'],['绣衣坊','监察御史刘濂'],['吏部坊','考功司员外郎刘汀'],['观光坊','癸卯科李茂卿']].forEach(([n,w],i)=>add('北街',i,n,w));
+  const cnt={};
+  ARCHES.forEach((a,i)=>{
+    const st=a.st||'西大街', k=a.st; cnt[k]=(cnt[k]||0)+1;
+    const key=Object.keys(ARCH_MEAN).find(m=>a.name.startsWith(m));
+    let n=`为${a.who}所立。`+(key?ARCH_MEAN[key]:'');
+    if(!a.st) n+='营建志列于坊表之首，未写明所在街道，这里示意立在县治以东的西大街上。';
+    if(a.late) n+='这两座坊旧志未载，康熙志补入，记为“在东街”。';
+    if(a.odd) n+='坊名首字原书作罕见字，难以辨认，以“□”代替。';
+    if(a.fix) n+='原书作“自迁”，“自”疑为“白”字之误，暂作“白迁”，待核。';
+    n+='营建志只记坊名与所在街道，牌坊的形制和具体位置为示意。';
+    const ew=a.ry!==0;
+    LM.push({id:'arch'+i,name:a.name,cat:'arch',type:'arch',minor:1,x:a.x,z:a.z,ry:a.ry,span:a.span,grand:a.grand,wood:a.wood,street:st,
+      w:ew?.8:a.span+.6,d:ew?a.span+.6:.8,q:ARCH_SRC[a.st],n,pos:`${st}，跨街而立。`});
+  });
+}
 
 /* 街道（图中有名者标注） */
 const ST=[
@@ -1030,6 +1116,7 @@ for(const L of LM){
 const streetProps=new THREE.Group(); world.add(streetProps);
 const EXTRA=[];
 screenWall(streetProps,-39,2.12,7); EXTRA.push([-43.2,1.5,-34.8,3.1]);       // 县治照壁（隔西大街相对）
+EXTRA.push([-50,1.5,-43.2,4.4],[-34.8,1.5,-31.2,4.4]);                         // 申明亭、总铺、旌善亭
 for(const [x,z] of [[-38.4,18.6],[-51.6,31.5],[11.6,20.2],[34.6,26],[-7.2,-33.6],[53.6,-33.6],[-20,14.4],[63,13.8]]){
   well(streetProps,x,z,x*.7); EXTRA.push([x-.9,z-.9,x+.9,z+.9]);
 }
@@ -1284,11 +1371,12 @@ for(const [t,x,z,y] of STATIC) addPerson(t,x,z,y);
   for(let x=-73;x<=73;x+=2.4){ for(const side of [-1,1]){
     if(r()<.5||Math.abs(x-2.5)<4||vertX.some(v=>Math.abs(v-x)<2.2)) continue;
     if(side<0&&fronts.some(l=>Math.abs(x-l.x)<3.4)) continue;
-    if(side>0&&Math.abs(x+39)<4.5) continue;
+    if(side>0&&Math.abs(x+40.5)<10) continue;
+    if(ARCHES.some(a=>a.ry&&Math.abs(a.z)<1&&Math.abs(a.x-x)<1.4)) continue;
     const z=side*1.22, ry=side<0?0:Math.PI; stall(streetProps,x,z,ry,Math.floor(r()*1e6)+1);
     if(r()<.8) addPerson(r()<.3?'woman':'man',x+(r()-.5)*.3,side*1.6,ry);
   } }
-  for(let z=-46;z<=45;z+=2.4){ if(Math.abs(z)<4||horZ.some(v=>Math.abs(v-z)<2.2)) continue; for(const side of [-1,1]){
+  for(let z=-46;z<=45;z+=2.4){ if(Math.abs(z)<4||horZ.some(v=>Math.abs(v-z)<2.2)||ARCHES.some(a=>!a.ry&&Math.abs(a.z-z)<1.4)) continue; for(const side of [-1,1]){
     if(r()<.55) continue; const x=2.5+side*1.0, ry=side<0?Math.PI/2:-Math.PI/2; stall(streetProps,x,z,ry,Math.floor(r()*1e6)+1);
     if(r()<.8) addPerson(r()<.3?'woman':'man',2.5+side*1.36,z+(r()-.5)*.3,ry);
   } }
@@ -1385,7 +1473,7 @@ const labelObjs=[], streetObjs=[];
 const bb=new THREE.Box3();
 for(const L of LM){
   const el=document.createElement('div');
-  el.className='lb'+(L.big?' big':'')+(L.cat==='defense'?' gate':'')+(L.uq?' q':''); el.dataset.id=L.id; el.dataset.cat=L.cat;
+  el.className='lb'+(L.big?' big':'')+(L.cat==='defense'?' gate':'')+(L.uq?' q':'')+(L.minor?' minor':''); el.dataset.id=L.id; el.dataset.cat=L.cat;
   el.innerHTML=`<i style="background:${CATS[L.cat].c}"></i>${L.name}`;
   el.addEventListener('pointerdown',e=>e.stopPropagation());
   el.addEventListener('click',e=>{e.stopPropagation();select(L.id,!walking);});
@@ -1393,7 +1481,7 @@ for(const L of LM){
   let y;
   if(L.type===null){ y=WALL_H+3.6; }
   else { bb.setFromObject(L.group); y=bb.max.y+.6; }
-  const o=new CSS2DObject(el); o.position.set(L.x,y,L.z); scene.add(o); labelObjs.push(o); L.el=el; L.labelY=y;
+  const o=new CSS2DObject(el); o.position.set(L.x,y,L.z); o.userData.minor=!!L.minor; scene.add(o); labelObjs.push(o); L.el=el; L.labelY=y;
 }
 for(const s of ST){ if(!s.n) continue;
   const el=document.createElement('div'); el.className='st'; el.textContent=s.n+(s.uq?'?':'');
@@ -1458,7 +1546,7 @@ function select(id,fly){
   L.el.classList.add('on'); document.querySelector(`.it[data-id="${id}"]`)?.classList.add('on');
   document.getElementById('iName').textContent=L.name;
   const cat=CATS[L.cat];
-  document.getElementById('iTags').innerHTML=`<span class="tag" style="background:${cat.c}">${cat.n}</span>`+(L.uq?'<span class="tag warn">图中字迹待核</span>':'');
+  document.getElementById('iTags').innerHTML=`<span class="tag" style="background:${cat.c}">${cat.n}</span>`+(L.uq?'<span class="tag warn">图中字迹待核</span>':'')+(L.sx?'<span class="tag warn">图中未画 · 位置示意</span>':'');
   document.getElementById('iBody').innerHTML=
     `<h5>县志原文</h5><blockquote>${L.q}</blockquote>`+
     (L.n?`<h5>复原说明</h5><p>${L.n}</p>`:'')+
@@ -1498,7 +1586,7 @@ for(const [k,v] of Object.entries(CATS)){
   const h=document.createElement('h4'); h.dataset.cat=k; h.textContent=v.n; listEl.appendChild(h);
   for(const L of LM.filter(l=>l.cat===k)){
     const it=document.createElement('button'); it.className='it'; it.dataset.id=L.id; it.dataset.cat=k;
-    it.innerHTML=`<i style="background:${v.c}"></i>${L.name}${L.uq?'<small>待核</small>':''}`;
+    it.innerHTML=`<i style="background:${v.c}"></i>${L.name}${L.uq?'<small>待核</small>':L.street?`<small>${L.street}</small>`:L.sx?'<small>示意</small>':''}`;
     it.onclick=()=>{ if(walking){walkTo(L);select(L.id,false);} else select(L.id,true); if(innerWidth<760) side.classList.remove('mob');};
     listEl.appendChild(it);
   }
@@ -1634,7 +1722,7 @@ function updateWalk(dt){
   camera.position.set(player.x,EYE+bob,player.z);
   camera.rotation.set(pitch,yaw,0,'YXZ');
   // 只显示近处标注
-  for(const o of labelObjs) o.visible=o.position.distanceTo(player)<38;
+  for(const o of labelObjs) o.visible=o.position.distanceTo(player)<(o.userData.minor?9:38);
   updateStreetNames();
 }
 function walkTo(L){
@@ -1642,6 +1730,7 @@ function walkTo(L){
   if(L.type==='gate'){ const ix=-Math.sin(L.ry)*0, k=6; // 门内
     if(L.id==='g_s'){z=HZ-k;y=0;} else if(L.id==='g_n'){z=-HZ+k;y=Math.PI;} else if(L.id==='g_w'){x=-HX+k;y=-Math.PI/2;} else {x=HX-k;y=Math.PI/2;} }
   else if(L.type===null){ x=2.5; z=HZ+WALL_T/2+12; y=0; }
+  else if(L.cat==='arch'){ if(L.ry){ x=L.x-3; z=0; y=-Math.PI/2; } else { x=2.5; z=L.z+3; y=0; } }
   else { z=L.z+L.d/2+1.6; y=0; }
   player.set(x,EYE,z); yaw=y; pitch=.08;
 }
